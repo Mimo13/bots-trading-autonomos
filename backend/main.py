@@ -117,6 +117,23 @@ def strategy_run():
     cp=subprocess.run([str(ROOT/'scripts/strategy_advisor.py')], capture_output=True, text=True)
     return {'ok':cp.returncode==0,'stdout':cp.stdout[-500:], 'stderr':cp.stderr[-500:]}
 
+@app.post('/api/strategy/ab-run')
+def strategy_ab_run():
+    cp=subprocess.run([str(ROOT/'scripts/strategy_ab_sim.py')], capture_output=True, text=True)
+    return {'ok':cp.returncode==0,'stdout':cp.stdout[-1200:], 'stderr':cp.stderr[-1200:]}
+
+@app.get('/api/strategy/ab-tests')
+def strategy_ab_tests():
+    rows=q('''select bot_name,ts,baseline_pnl,candidate_pnl,delta_pnl,baseline_win_rate,candidate_win_rate,config_patch,notes
+              from strategy_ab_tests order by ts desc limit 10''')
+    items=[]
+    for r in rows:
+        items.append({
+          'bot_name':r[0],'ts':_j(r[1]),'baseline_pnl':_j(r[2]),'candidate_pnl':_j(r[3]),'delta_pnl':_j(r[4]),
+          'baseline_win_rate':_j(r[5]),'candidate_win_rate':_j(r[6]),'config_patch':r[7],'notes':r[8]
+        })
+    return {'items':items}
+
 @app.post('/api/bots/{bot}/start')
 def start(bot:str):
     if bot=='fabian':

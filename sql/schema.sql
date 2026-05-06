@@ -53,3 +53,16 @@ create table if not exists strategy_recommendations (
   recommendations jsonb not null,
   confidence numeric not null default 0
 );
+
+create table if not exists strategy_ab_tests (
+  id bigserial primary key,
+  bot_name text not null,
+  ts timestamptz not null default now(),
+  baseline_pnl numeric,
+  candidate_pnl numeric,
+  baseline_win_rate numeric,
+  candidate_win_rate numeric,
+  delta_pnl numeric,
+  config_patch jsonb not null,
+  notes text
+);
