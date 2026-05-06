@@ -55,7 +55,6 @@ def _latency_checks():
       ('cTrader signal', [ROOT/'runtime/tradingview/ctrader_signal.csv'], 6*60),
       ('Poly status', [ROOT/'runtime/polymarket/last_runner_status.json'], 130*60),
       ('watchdog log', [ROOT/'runtime/logs/watchdog.log', Path('/Users/mimo13/.bta-run/logs/watchdog_runtime.log')], 5*60),
-      ('collector log', [ROOT/'runtime/logs/launchd_collector.out.log', Path('/Users/mimo13/.bta-run/logs/collector.out.log')], 3*60),
       ('supervisor log', [ROOT/'runtime/logs/supervisor_cycle.log', Path('/Users/mimo13/.bta-run/logs/supervisor_runtime.log')], 130*60),
     ]
 
@@ -75,6 +74,19 @@ def latency():
         age=int(now-p.stat().st_mtime)
         sev='ok' if age<=limit else 'warning' if age<=limit*2 else 'critical'
         items.append({'name':name,'age_s':age,'limit_s':limit,'severity':sev})
+
+    # collector freshness from DB status timestamps
+    try:
+        rows=q("select extract(epoch from (now()-max(updated_at))) from bot_status")
+        age=int(float(rows[0][0])) if rows and rows[0][0] is not None else None
+    except Exception:
+        age=None
+    if age is None:
+        items.append({'name':'collector freshness','age_s':None,'limit_s':180,'severity':'critical'})
+    else:
+        sev='ok' if age<=180 else 'warning' if age<=360 else 'critical'
+        items.append({'name':'collector freshness','age_s':age,'limit_s':180,'severity':sev})
+
     return {'items':items}
 
 @app.get('/api/alerts')
