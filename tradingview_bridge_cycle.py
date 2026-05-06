@@ -24,9 +24,8 @@ def main() -> None:
     except Exception as e:
         status['ok'] = False
         status['notes'].append(f'ctrader signal fallback: {e}')
-        if not CTRADER_OUT.exists():
-            CTRADER_OUT.parent.mkdir(parents=True, exist_ok=True)
-            CTRADER_OUT.write_text('timestamp_utc,symbol,recommendation,confidence\n' + f"{status['ts']},EURUSD,NEUTRAL,0.0000\n", encoding='utf-8')
+        CTRADER_OUT.parent.mkdir(parents=True, exist_ok=True)
+        CTRADER_OUT.write_text('timestamp_utc,symbol,recommendation,confidence\n' + f"{status['ts']},EURUSD,NEUTRAL,0.0000\n", encoding='utf-8')
 
     try:
         if POLY_BASE.exists():
