@@ -114,12 +114,14 @@ def strategy_recommendations():
 
 @app.post('/api/strategy/run')
 def strategy_run():
-    cp=subprocess.run([str(ROOT/'scripts/strategy_advisor.py')], capture_output=True, text=True)
+    py=str(ROOT/'.venv/bin/python')
+    cp=subprocess.run([py, str(ROOT/'scripts/strategy_advisor.py')], capture_output=True, text=True)
     return {'ok':cp.returncode==0,'stdout':cp.stdout[-500:], 'stderr':cp.stderr[-500:]}
 
 @app.post('/api/strategy/ab-run')
 def strategy_ab_run():
-    cp=subprocess.run([str(ROOT/'scripts/strategy_ab_sim.py')], capture_output=True, text=True)
+    py=str(ROOT/'.venv/bin/python')
+    cp=subprocess.run([py, str(ROOT/'scripts/strategy_ab_sim.py')], capture_output=True, text=True)
     return {'ok':cp.returncode==0,'stdout':cp.stdout[-1200:], 'stderr':cp.stderr[-1200:]}
 
 @app.get('/api/strategy/ab-tests')
