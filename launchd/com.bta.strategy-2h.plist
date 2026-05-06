@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>com.bta.strategy-2h</string>
+<key>ProgramArguments</key><array><string>/bin/zsh</string><string>-lc</string><string>/Users/mimo13/.bta-run/strategy2h.sh</string></array>
+<key>RunAtLoad</key><true/>
+<key>StartInterval</key><integer>7200</integer>
+<key>StandardOutPath</key><string>/Users/mimo13/.bta-run/logs/strategy2h.out.log</string>
+<key>StandardErrorPath</key><string>/Users/mimo13/.bta-run/logs/strategy2h.err.log</string>
+</dict></plist>
