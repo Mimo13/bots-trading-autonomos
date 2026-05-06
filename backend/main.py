@@ -50,22 +50,34 @@ def bot(bot:str):
     wallet=[{k:_j(v) for k,v in zip(['token','amount','usd_value','updated_at'],r)} for r in w]
     return {'status':status,'trades':trades,'positions':positions,'wallet':wallet}
 
-@app.get('/api/alerts')
-def alerts():
-    out=[]
-    now=datetime.now(timezone.utc).timestamp()
-    checks=[
+def _latency_checks():
+    return [
       ('cTrader signal', ROOT/'runtime/tradingview/ctrader_signal.csv', 6*60),
       ('Poly status', ROOT/'runtime/polymarket/last_runner_status.json', 130*60),
       ('watchdog log', ROOT/'runtime/logs/watchdog.log', 5*60),
+      ('collector log', ROOT/'runtime/logs/launchd_collector.out.log', 3*60),
+      ('supervisor log', ROOT/'runtime/logs/supervisor_cycle.log', 130*60),
     ]
-    for name,p,limit in checks:
+
+@app.get('/api/latency')
+def latency():
+    now=datetime.now(timezone.utc).timestamp()
+    items=[]
+    for name,p,limit in _latency_checks():
         if not p.exists():
-            out.append({'severity':'critical','name':name,'message':'archivo ausente'})
+            items.append({'name':name,'age_s':None,'limit_s':limit,'severity':'critical'})
             continue
         age=int(now-p.stat().st_mtime)
         sev='ok' if age<=limit else 'warning' if age<=limit*2 else 'critical'
-        out.append({'severity':sev,'name':name,'message':f'age={age}s'})
+        items.append({'name':name,'age_s':age,'limit_s':limit,'severity':sev})
+    return {'items':items}
+
+@app.get('/api/alerts')
+def alerts():
+    out=[]
+    for x in latency()['items']:
+        msg='archivo ausente' if x['age_s'] is None else f"age={x['age_s']}s"
+        out.append({'severity':x['severity'],'name':x['name'],'message':msg})
     return {'alerts':out}
 
 @app.get('/api/strategy/recommendations')
