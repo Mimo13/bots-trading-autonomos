@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import os, subprocess
+import os, subprocess, csv
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -79,6 +79,33 @@ def alerts():
         msg='archivo ausente' if x['age_s'] is None else f"age={x['age_s']}s"
         out.append({'severity':x['severity'],'name':x['name'],'message':msg})
     return {'alerts':out}
+
+@app.get('/api/reasons/{bot}')
+def reasons(bot:str, days:int=1):
+    from collections import Counter
+    c=Counter()
+    if bot=='poly':
+        runs=sorted((ROOT/'runtime/polymarket/runs').glob('*/decisions_log.csv'))[-60:]
+        cutoff=datetime.now(timezone.utc).timestamp() - max(1,days)*86400
+        for f in runs:
+            with f.open() as h:
+                for row in csv.DictReader(h):
+                    ts=row.get('timestamp_utc','')
+                    try:
+                        dt=datetime.fromisoformat(ts.replace('Z','+00:00')).timestamp()
+                    except Exception:
+                        continue
+                    if dt>=cutoff:
+                        c[row.get('reason_code','UNKNOWN')] += 1
+    else:
+        ops=ROOT/'runtime/ops/ctrader_operations.csv'
+        if ops.exists():
+            with ops.open() as h:
+                for row in csv.DictReader(h):
+                    rc=row.get('reason_code') or row.get('operation') or 'UNKNOWN'
+                    c[rc]+=1
+    top=[{'reason_code':k,'count':v} for k,v in c.most_common(12)]
+    return {'bot':bot,'days':days,'items':top}
 
 @app.get('/api/strategy/recommendations')
 def strategy_recommendations():
