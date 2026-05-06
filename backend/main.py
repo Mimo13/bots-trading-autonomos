@@ -80,32 +80,47 @@ def alerts():
         out.append({'severity':x['severity'],'name':x['name'],'message':msg})
     return {'alerts':out}
 
-@app.get('/api/reasons/{bot}')
-def reasons(bot:str, days:int=1):
-    from collections import Counter
-    c=Counter()
+def _collect_reason_rows(bot:str, days:int=1):
+    rows=[]
+    cutoff=datetime.now(timezone.utc).timestamp() - max(1,days)*86400
     if bot=='poly':
-        runs=sorted((ROOT/'runtime/polymarket/runs').glob('*/decisions_log.csv'))[-60:]
-        cutoff=datetime.now(timezone.utc).timestamp() - max(1,days)*86400
+        runs=sorted((ROOT/'runtime/polymarket/runs').glob('*/decisions_log.csv'))[-90:]
         for f in runs:
             with f.open() as h:
                 for row in csv.DictReader(h):
                     ts=row.get('timestamp_utc','')
                     try:
-                        dt=datetime.fromisoformat(ts.replace('Z','+00:00')).timestamp()
+                        dt=datetime.fromisoformat(ts.replace('Z','+00:00'))
                     except Exception:
                         continue
-                    if dt>=cutoff:
-                        c[row.get('reason_code','UNKNOWN')] += 1
+                    if dt.timestamp()>=cutoff:
+                        rows.append((dt,row.get('reason_code','UNKNOWN')))
     else:
         ops=ROOT/'runtime/ops/ctrader_operations.csv'
         if ops.exists():
             with ops.open() as h:
                 for row in csv.DictReader(h):
                     rc=row.get('reason_code') or row.get('operation') or 'UNKNOWN'
-                    c[rc]+=1
+                    dt=datetime.now(timezone.utc)
+                    rows.append((dt,rc))
+    return rows
+
+@app.get('/api/reasons/{bot}')
+def reasons(bot:str, days:int=1):
+    from collections import Counter
+    c=Counter([rc for _,rc in _collect_reason_rows(bot,days)])
     top=[{'reason_code':k,'count':v} for k,v in c.most_common(12)]
     return {'bot':bot,'days':days,'items':top}
+
+@app.get('/api/reasons-hourly/{bot}')
+def reasons_hourly(bot:str, days:int=1):
+    from collections import Counter
+    hourly=Counter()
+    for dt, rc in _collect_reason_rows(bot, days):
+        key=f"{dt.hour:02d}:00"
+        hourly[(key, rc)] += 1
+    items=[{'hour':h,'reason_code':rc,'count':n} for (h,rc),n in sorted(hourly.items(), key=lambda x:(x[0][0],-x[1]))]
+    return {'bot':bot,'days':days,'items':items}
 
 @app.get('/api/strategy/recommendations')
 def strategy_recommendations():
@@ -126,14 +141,44 @@ def strategy_ab_run():
 
 @app.get('/api/strategy/ab-tests')
 def strategy_ab_tests():
-    rows=q('''select bot_name,ts,baseline_pnl,candidate_pnl,delta_pnl,baseline_win_rate,candidate_win_rate,config_patch,notes
+    rows=q('''select id,bot_name,ts,baseline_pnl,candidate_pnl,delta_pnl,baseline_win_rate,candidate_win_rate,config_patch,notes
               from strategy_ab_tests order by ts desc limit 10''')
     items=[]
     for r in rows:
         items.append({
-          'bot_name':r[0],'ts':_j(r[1]),'baseline_pnl':_j(r[2]),'candidate_pnl':_j(r[3]),'delta_pnl':_j(r[4]),
-          'baseline_win_rate':_j(r[5]),'candidate_win_rate':_j(r[6]),'config_patch':r[7],'notes':r[8]
+          'id':r[0],'bot_name':r[1],'ts':_j(r[2]),'baseline_pnl':_j(r[3]),'candidate_pnl':_j(r[4]),'delta_pnl':_j(r[5]),
+          'baseline_win_rate':_j(r[6]),'candidate_win_rate':_j(r[7]),'config_patch':r[8],'notes':r[9]
         })
+    return {'items':items}
+
+@app.post('/api/strategy/promote')
+def strategy_promote():
+    py=str(ROOT/'.venv/bin/python')
+    cp=subprocess.run([py, str(ROOT/'scripts/strategy_promote.py')], capture_output=True, text=True)
+    return {'ok':cp.returncode==0,'stdout':cp.stdout[-1200:], 'stderr':cp.stderr[-1200:]}
+
+@app.get('/api/strategy/promotions')
+def strategy_promotions():
+    rows=q('''select bot_name,ts,decision,reason,ab_test_id,proposed_patch,applied
+              from strategy_promotions order by ts desc limit 20''')
+    items=[]
+    for r in rows:
+        items.append({'bot_name':r[0],'ts':_j(r[1]),'decision':r[2],'reason':r[3],'ab_test_id':r[4],'proposed_patch':r[5],'applied':r[6]})
+    return {'items':items}
+
+@app.get('/api/weekly-compare')
+def weekly_compare():
+    rows=q('''
+      select bot_name,
+             coalesce(sum(pnl_usd),0) as pnl_week,
+             count(*) as trades,
+             coalesce(avg(case when pnl_usd>0 then 1.0 else 0.0 end),0) as win_rate
+      from trades
+      where ts >= now() - interval '7 day'
+      group by bot_name
+      order by pnl_week desc
+    ''')
+    items=[{'bot_name':r[0],'pnl_week':_j(r[1]),'trades':int(r[2]),'win_rate':_j(r[3])} for r in rows]
     return {'items':items}
 
 @app.post('/api/bots/{bot}/start')

@@ -66,3 +66,14 @@ create table if not exists strategy_ab_tests (
   config_patch jsonb not null,
   notes text
 );
+
+create table if not exists strategy_promotions (
+  id bigserial primary key,
+  bot_name text not null,
+  ts timestamptz not null default now(),
+  decision text not null,
+  reason text not null,
+  ab_test_id bigint references strategy_ab_tests(id),
+  proposed_patch jsonb,
+  applied boolean not null default false
+);
