@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>com.bta.collector-1m</string>
+<key>ProgramArguments</key><array><string>/bin/zsh</string><string>-lc</string><string>cd /Volumes/Almacen/Desarrollo/bots-trading-autonomos; ./.venv/bin/python scripts/collector.py</string></array>
+<key>RunAtLoad</key><true/><key>StartInterval</key><integer>60</integer>
+<key>StandardOutPath</key><string>/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/logs/launchd_collector.out.log</string>
+<key>StandardErrorPath</key><string>/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/logs/launchd_collector.err.log</string>
+</dict></plist>

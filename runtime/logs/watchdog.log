@@ -1,0 +1,4 @@
+2026-05-06T19:20:52.703683Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-06T19:20:52.704463Z | ages: ctrader_signal=295s last_runner_status=1000000000s
+2026-05-06T19:20:53.351083Z | supervisor_cycle: OK try 1
+2026-05-06T19:20:53.356912Z | health: OK signal_age=0s status_age=0s

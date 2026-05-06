@@ -1,0 +1,22 @@
+## Supervisión 2026-05-06T19:20:52.762942Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: True
+  - polymarket_simulated: True
+  - obsidian_updated: True
+  - notes: polymarket run ok
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-06T19:20:52.639130Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: True
+  - polymarket_simulated: True
+  - obsidian_updated: True
+  - notes: polymarket run ok
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
