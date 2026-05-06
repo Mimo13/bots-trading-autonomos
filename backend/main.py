@@ -52,19 +52,24 @@ def bot(bot:str):
 
 def _latency_checks():
     return [
-      ('cTrader signal', ROOT/'runtime/tradingview/ctrader_signal.csv', 6*60),
-      ('Poly status', ROOT/'runtime/polymarket/last_runner_status.json', 130*60),
-      ('watchdog log', ROOT/'runtime/logs/watchdog.log', 5*60),
-      ('collector log', ROOT/'runtime/logs/launchd_collector.out.log', 3*60),
-      ('supervisor log', ROOT/'runtime/logs/supervisor_cycle.log', 130*60),
+      ('cTrader signal', [ROOT/'runtime/tradingview/ctrader_signal.csv'], 6*60),
+      ('Poly status', [ROOT/'runtime/polymarket/last_runner_status.json'], 130*60),
+      ('watchdog log', [ROOT/'runtime/logs/watchdog.log', Path('/Users/mimo13/.bta-run/logs/watchdog_runtime.log')], 5*60),
+      ('collector log', [ROOT/'runtime/logs/launchd_collector.out.log', Path('/Users/mimo13/.bta-run/logs/collector.out.log')], 3*60),
+      ('supervisor log', [ROOT/'runtime/logs/supervisor_cycle.log', Path('/Users/mimo13/.bta-run/logs/supervisor_runtime.log')], 130*60),
     ]
 
 @app.get('/api/latency')
 def latency():
     now=datetime.now(timezone.utc).timestamp()
     items=[]
-    for name,p,limit in _latency_checks():
-        if not p.exists():
+    for name,paths,limit in _latency_checks():
+        p=None
+        for cand in paths:
+            if cand.exists():
+                p=cand
+                break
+        if p is None:
             items.append({'name':name,'age_s':None,'limit_s':limit,'severity':'critical'})
             continue
         age=int(now-p.stat().st_mtime)
