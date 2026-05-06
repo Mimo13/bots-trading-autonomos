@@ -51,11 +51,13 @@ def load_wallet_positions(conn, bot:str):
                              [bot, x.get('symbol','UNK'), x.get('side','BUY'), float(x.get('qty') or 0), float(x.get('entry_price') or 0), float(x.get('mark_price') or 0), float(x.get('unrealized_pnl_usd') or 0)])
 
 
+INITIAL_BALANCE = 100.0
+
 def load_poly(conn):
     runs=ROOT/'runtime/polymarket/runs'
     files=sorted(runs.glob('*/trades_log.csv')) if runs.exists() else []
     now=datetime.now(timezone.utc); day0=now.date(); week0=now-timedelta(days=7)
-    pnl_day=0.0; pnl_week=0.0; balance=1000.0; trades_n=0
+    pnl_day=0.0; pnl_week=0.0; balance=INITIAL_BALANCE; trades_n=0
     for f in files[-40:]:
         with f.open() as h:
             r=csv.DictReader(h)
@@ -79,7 +81,7 @@ def load_fabian(conn):
     ops=ROOT/'runtime/ops/ctrader_operations.csv'; signal=ROOT/'runtime/tradingview/ctrader_signal.csv'
     running=signal.exists() and (datetime.now(timezone.utc).timestamp()-signal.stat().st_mtime)<600
     now=datetime.now(timezone.utc); day0=now.date(); week0=now-timedelta(days=7)
-    pnl_day=0.0; pnl_week=0.0; balance=0.0
+    pnl_day=0.0; pnl_week=0.0; balance=INITIAL_BALANCE
     if ops.exists():
         with ops.open() as h:
             r=csv.DictReader(h)

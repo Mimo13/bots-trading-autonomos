@@ -43,7 +43,7 @@ def bot(bot:str):
         ks=['bot_name','is_running','mode','balance_usd','pnl_day_usd','pnl_week_usd','tokens_value_usd','updated_at']
         status={k:_j(v) for k,v in zip(ks,s[0])}
     else:
-        status={'bot_name':bot,'is_running':False,'mode':'paper','balance_usd':0,'pnl_day_usd':0,'pnl_week_usd':0,'tokens_value_usd':0,'updated_at':None}
+        status={'bot_name':bot,'is_running':False,'mode':'paper','balance_usd':100,'pnl_day_usd':0,'pnl_week_usd':0,'tokens_value_usd':0,'updated_at':None}
 
     trades=[{k:_j(v) for k,v in zip(['ts','side','token_qty','usd_amount','pnl_usd','result'],r)} for r in t]
     positions=[{k:_j(v) for k,v in zip(['symbol','side','qty','entry_price','mark_price','unrealized_pnl_usd','updated_at'],r)} for r in p]
