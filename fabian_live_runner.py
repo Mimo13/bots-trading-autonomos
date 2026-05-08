@@ -45,10 +45,10 @@ STATUS_PATH = OUT_DIR / "status.json"
 # ── Estado global ─────────────────────────────────────────────────────────────
 
 class LiveState:
-    def __init__(self):
-        self.balance = 10000.0  # partimos de 10k USDT
-        self.peak_balance = 10000.0
-        self.daily_start_balance = 10000.0
+    def __init__(self, initial_balance: float = 100.0):
+        self.balance = initial_balance
+        self.peak_balance = initial_balance
+        self.daily_start_balance = initial_balance
         self.daily_pnl = 0.0
         self.trades_today = 0
         self.trades_london = 0
@@ -94,13 +94,14 @@ class LiveState:
 class FabianLiveRunner:
     def __init__(self, client: BinanceClient, config: FabianConfig,
                  symbol: str = "SOLUSDT", interval: str = "5m",
-                 mode: str = "pullback"):
+                 mode: str = "pullback", initial_balance: float = 100.0):
         self.client = client
         self.cfg = config
         self.symbol = symbol.upper()
         self.interval = interval
         self.mode = mode
-        self.state = LiveState()
+        self.initial_balance = initial_balance
+        self.state = LiveState(initial_balance)
         self._candles: List[Candle] = []
         self._body_avgs: List[float] = []
         self._last_processed_bar = 0
@@ -141,13 +142,20 @@ class FabianLiveRunner:
         return candles
 
     def update_balance(self):
-        """Actualizar balance desde la cuenta testnet."""
+        """Actualizar balance simulado (no lee del exchange real).
+        Usa realized PnL de testnet para actualizar el saldo de $100."""
         try:
-            bal = self.client.get_balance("USDT")
-            if bal:
-                self.state.balance = float(bal[0]["free"])
+            my_trades = self.client.get_my_trades(self.symbol, limit=10)
+            total_pnl = 0.0
+            for t in my_trades:
+                realized = float(t.get('realizedPnl', 0))
+                if realized != 0:
+                    total_pnl += realized
+            sim = self.initial_balance + total_pnl
+            if sim > 0:
+                self.state.balance = sim
         except Exception as e:
-            print(f"[WARN] No se pudo actualizar balance: {e}")
+            pass
 
     def log_decision(self, row: dict):
         if self._dec_writer:
@@ -406,10 +414,10 @@ class FabianLiveRunner:
 
     def _save_summary(self):
         """Guardar resumen final."""
-        total_pnl = self.state.balance - 10000.0
+        total_pnl = self.state.balance - self.initial_balance
         win_rate = (self.state.total_wins / self.state.total_trades * 100) if self.state.total_trades > 0 else 0
         summary = {
-            "initial_balance": 10000.0,
+            "initial_balance": self.initial_balance,
             "final_balance": round(self.state.balance, 2),
             "total_pnl": round(total_pnl, 2),
             "total_trades": self.state.total_trades,
@@ -429,13 +437,15 @@ def main():
     p.add_argument("--interval", default="5m")
     p.add_argument("--mode", choices=["pullback", "pro"], default="pullback")
     p.add_argument("--config", help="Ruta a config JSON opcional")
+    p.add_argument("--initial-balance", type=float, default=100.0)
+    p.add_argument("--risk", type=float, default=2.0)
+    p.add_argument("--min-rr", type=float, default=1.2)
     args = p.parse_args()
 
-    # Cargar config
-    cfg = FabianConfig(initial_balance=10000.0)
+    cfg = FabianConfig(initial_balance=args.initial_balance,
+                       risk_percent=args.risk, min_rr=args.min_rr)
     if args.config:
         cfg_loaded = load_config(Path(args.config))
-        # Copiar campos no-default
         for k, v in cfg_loaded.__dict__.items():
             if hasattr(cfg, k) and v != FabianConfig().__dict__.get(k):
                 setattr(cfg, k, v)
@@ -443,13 +453,12 @@ def main():
     if args.mode == "pro":
         cfg.risk_percent = 2.0
         cfg.min_rr = 1.0
-        # Parámetros FabianPro
 
-    # Cliente testnet
     client = load_client(testnet=True)
 
     runner = FabianLiveRunner(client, cfg, symbol=args.symbol,
-                              interval=args.interval, mode=args.mode)
+                              interval=args.interval, mode=args.mode,
+                              initial_balance=args.initial_balance)
     runner.run()
 
 
