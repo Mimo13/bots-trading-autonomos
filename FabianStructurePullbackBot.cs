@@ -317,7 +317,8 @@ namespace cAlgo.Robots
             double tpPips = (tpPrice - entry) / Symbol.PipSize;
 
             string label = "FABIAN_BUY_" + idx;
-            var result = PlaceStopOrder(TradeType.Buy, Symbol, volume, stopPips, slPips, tpPips, label);
+            // cTrader: (TradeType, Symbol, volume, stopPips, label, slPips, tpPips)
+            var result = PlaceStopOrder(TradeType.Buy, Symbol, volume, stopPips, label, slPips, tpPips);
 
             if (result.IsSuccessful)
             {
@@ -354,7 +355,8 @@ namespace cAlgo.Robots
             double tpPips = (entry - tpPrice) / Symbol.PipSize;
 
             string label = "FABIAN_SELL_" + idx;
-            var result = PlaceStopOrder(TradeType.Sell, Symbol, volume, stopPips, slPips, tpPips, label);
+            // cTrader: (TradeType, Symbol, volume, stopPips, label, slPips, tpPips)
+            var result = PlaceStopOrder(TradeType.Sell, Symbol, volume, stopPips, label, slPips, tpPips);
 
             if (result.IsSuccessful)
             {
@@ -390,16 +392,15 @@ namespace cAlgo.Robots
         // EVENTOS DE POSICIÓN
         // ========================================================================
 
-        protected override void OnPositionOpened(PositionOpenedEventArgs args)
+#pragma warning disable CS0672
+        protected override void OnPositionOpened(Position position)
         {
-            var pos = args.Position;
-            if (pos.Label.StartsWith("FABIAN"))
-                Print($"Abierta: {pos.TradeType} Vol={pos.VolumeInUnits} @ {pos.EntryPrice}");
+            if (position.Label.StartsWith("FABIAN"))
+                Print($"Abierta: {position.TradeType} VolInUnits={position.VolumeInUnits} @ {position.EntryPrice}");
         }
 
-        protected override void OnPositionClosed(PositionClosedEventArgs args)
+        protected override void OnPositionClosed(Position position)
         {
-            var position = args.Position;
             if (!position.Label.StartsWith("FABIAN")) return;
 
             double pnl = position.GrossProfit;
@@ -427,6 +428,7 @@ namespace cAlgo.Robots
 
             Print($"Cerrada: {position.TradeType} PnL={pnl:F2} Bal={Account.Equity:F2}");
         }
+#pragma warning restore CS0672
 
         // Trailing Stop
         protected override void OnTick()

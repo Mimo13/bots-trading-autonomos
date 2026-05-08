@@ -1,0 +1,84 @@
+2026-05-06T19:54:10.077806Z | scripts/strategy_advisor.py OK
+2026-05-06T19:54:10.254135Z | scripts/strategy_ab_sim.py OK
+2026-05-06T19:54:10.351123Z | scripts/strategy_promote.py OK
+2026-05-06T19:54:10.357879Z | promotion decision=hold (no apply)
+2026-05-06T21:54:10.681266Z | scripts/strategy_advisor.py OK
+2026-05-06T21:54:10.841224Z | scripts/strategy_ab_sim.py OK
+2026-05-06T21:54:10.936036Z | scripts/strategy_promote.py OK
+2026-05-06T21:54:10.943786Z | promotion decision=hold (no apply)
+2026-05-06T23:54:11.279907Z | scripts/strategy_advisor.py OK
+2026-05-06T23:54:11.442633Z | scripts/strategy_ab_sim.py OK
+2026-05-06T23:54:11.537904Z | scripts/strategy_promote.py OK
+2026-05-06T23:54:11.546592Z | promotion decision=hold (no apply)
+2026-05-07T01:54:11.914097Z | scripts/strategy_advisor.py OK
+2026-05-07T01:54:12.075752Z | scripts/strategy_ab_sim.py OK
+2026-05-07T01:54:12.167724Z | scripts/strategy_promote.py OK
+2026-05-07T01:54:12.176326Z | promotion decision=hold (no apply)
+2026-05-07T03:54:12.482644Z | scripts/strategy_advisor.py OK
+2026-05-07T03:54:12.643937Z | scripts/strategy_ab_sim.py OK
+2026-05-07T03:54:12.739324Z | scripts/strategy_promote.py OK
+2026-05-07T03:54:12.747931Z | promotion decision=hold (no apply)
+2026-05-07T05:54:13.176429Z | scripts/strategy_advisor.py OK
+2026-05-07T05:54:13.341022Z | scripts/strategy_ab_sim.py OK
+2026-05-07T05:54:13.434767Z | scripts/strategy_promote.py OK
+2026-05-07T05:54:13.443378Z | promotion decision=hold (no apply)
+2026-05-07T07:54:13.786876Z | scripts/strategy_advisor.py OK
+2026-05-07T07:54:13.949447Z | scripts/strategy_ab_sim.py OK
+2026-05-07T07:54:14.040769Z | scripts/strategy_promote.py OK
+2026-05-07T07:54:14.045811Z | promotion decision=hold (no apply)
+2026-05-07T09:54:14.420141Z | scripts/strategy_advisor.py OK
+2026-05-07T09:54:14.581910Z | scripts/strategy_ab_sim.py OK
+2026-05-07T09:54:14.677610Z | scripts/strategy_promote.py OK
+2026-05-07T09:54:14.684242Z | promotion decision=hold (no apply)
+2026-05-07T11:54:15.014920Z | scripts/strategy_advisor.py OK
+2026-05-07T11:54:15.195449Z | scripts/strategy_ab_sim.py OK
+2026-05-07T11:54:15.293857Z | scripts/strategy_promote.py OK
+2026-05-07T11:54:15.299908Z | promotion decision=hold (no apply)
+2026-05-07T13:54:15.626242Z | scripts/strategy_advisor.py OK
+2026-05-07T13:54:15.789217Z | scripts/strategy_ab_sim.py OK
+2026-05-07T13:54:15.883676Z | scripts/strategy_promote.py OK
+2026-05-07T13:54:15.892809Z | promotion decision=hold (no apply)
+2026-05-07T15:54:16.212875Z | scripts/strategy_advisor.py OK
+2026-05-07T15:54:16.377371Z | scripts/strategy_ab_sim.py OK
+2026-05-07T15:54:16.472517Z | scripts/strategy_promote.py OK
+2026-05-07T15:54:16.481212Z | promotion decision=hold (no apply)
+2026-05-07T17:54:16.807727Z | scripts/strategy_advisor.py OK
+2026-05-07T17:54:16.971483Z | scripts/strategy_ab_sim.py OK
+2026-05-07T17:54:17.068983Z | scripts/strategy_promote.py OK
+2026-05-07T17:54:17.078146Z | promotion decision=hold (no apply)
+2026-05-07T19:54:17.470414Z | scripts/strategy_advisor.py OK
+2026-05-07T19:54:17.633178Z | scripts/strategy_ab_sim.py OK
+2026-05-07T19:54:17.726147Z | scripts/strategy_promote.py OK
+2026-05-07T19:54:17.735512Z | promotion decision=hold (no apply)
+2026-05-07T21:54:18.108446Z | scripts/strategy_advisor.py OK
+2026-05-07T21:54:18.274657Z | scripts/strategy_ab_sim.py OK
+2026-05-07T21:54:18.369118Z | scripts/strategy_promote.py OK
+2026-05-07T21:54:18.377106Z | promotion decision=hold (no apply)
+2026-05-07T23:54:18.815906Z | scripts/strategy_advisor.py OK
+2026-05-07T23:54:18.982522Z | scripts/strategy_ab_sim.py OK
+2026-05-07T23:54:19.077316Z | scripts/strategy_promote.py OK
+2026-05-07T23:54:19.085058Z | promotion decision=hold (no apply)
+2026-05-08T01:54:19.436516Z | scripts/strategy_advisor.py OK
+2026-05-08T01:54:19.598016Z | scripts/strategy_ab_sim.py OK
+2026-05-08T01:54:19.693244Z | scripts/strategy_promote.py OK
+2026-05-08T01:54:19.697748Z | promotion decision=hold (no apply)
+2026-05-08T03:54:20.085323Z | scripts/strategy_advisor.py OK
+2026-05-08T03:54:20.247171Z | scripts/strategy_ab_sim.py OK
+2026-05-08T03:54:20.359320Z | scripts/strategy_promote.py OK
+2026-05-08T03:54:20.366309Z | promotion decision=hold (no apply)
+2026-05-08T05:54:20.638418Z | scripts/strategy_advisor.py OK
+2026-05-08T05:54:20.816727Z | scripts/strategy_ab_sim.py OK
+2026-05-08T05:54:20.914065Z | scripts/strategy_promote.py OK
+2026-05-08T05:54:20.921438Z | promotion decision=hold (no apply)
+2026-05-08T07:54:21.334192Z | scripts/strategy_advisor.py OK
+2026-05-08T07:54:21.503099Z | scripts/strategy_ab_sim.py OK
+2026-05-08T07:54:21.596888Z | scripts/strategy_promote.py OK
+2026-05-08T07:54:21.605577Z | promotion decision=hold (no apply)
+2026-05-08T09:54:21.964494Z | scripts/strategy_advisor.py OK
+2026-05-08T09:54:22.171529Z | scripts/strategy_ab_sim.py OK
+2026-05-08T09:54:22.264600Z | scripts/strategy_promote.py OK
+2026-05-08T09:54:22.270442Z | promotion decision=hold (no apply)
+2026-05-08T11:54:22.880975Z | scripts/strategy_advisor.py OK
+2026-05-08T11:54:23.056033Z | scripts/strategy_ab_sim.py OK
+2026-05-08T11:54:23.155753Z | scripts/strategy_promote.py OK
+2026-05-08T11:54:23.163035Z | promotion decision=hold (no apply)

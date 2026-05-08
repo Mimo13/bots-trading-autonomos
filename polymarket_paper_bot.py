@@ -41,22 +41,23 @@ class Candle:
 
 @dataclass
 class Config:
-    initial_equity: float = 1000.0
-    edge_min: float = 0.03
+    initial_equity: float = 100.0
+    edge_min: float = 0.05
     tv_filter_enabled: bool = False
     tv_min_confidence: float = 0.55
     tv_alignment_required: bool = True
     atr_period: int = 14
-    atr_min_ratio: float = 0.0015
+    atr_min_ratio: float = 0.0001
     adx_period: int = 14
     adx_min: float = 18.0
     payout_multiplier: float = 0.95
-    kelly_fraction: float = 0.25
+    kelly_fraction: float = 0.10
     max_risk_per_trade: float = 0.02
-    max_daily_loss_percent: float = 3.0
-    max_trades_per_day: int = 20
+    max_daily_loss_percent: float = 5.0
+    max_trades_per_day: int = 15
     loss_streak_pause: int = 3
-    pause_hours: int = 24
+    pause_hours: int = 12
+    only_up: bool = True  # Solo trades UP/BUY, evitar DOWN/SELL
 
 
 def parse_ts(s: str) -> datetime:
@@ -333,6 +334,8 @@ def run_sim(candles: List[Candle], cfg: Config, out_dir: Path) -> Dict:
                 side, p_side_model, edge = side_and_edge(c.p_model_up, c.p_market_up)
                 if edge < cfg.edge_min:
                     reason = "EDGE_TOO_LOW"
+                elif cfg.only_up and side == "DOWN":
+                    reason = "DOWN_SKIPPED"
 
             if not reason and cfg.tv_filter_enabled:
                 if c.tv_confidence < cfg.tv_min_confidence:

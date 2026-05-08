@@ -1,0 +1,33 @@
+{
+  "initial_equity": 1000.0,
+  "final_equity": 1000.0,
+  "total_pnl": 0.0,
+  "total_trades": 0,
+  "wins": 0,
+  "losses": 0,
+  "win_rate_percent": 0.0,
+  "max_drawdown_percent": 0.0,
+  "config": {
+    "initial_equity": 1000.0,
+    "edge_min": 0.03,
+    "tv_filter_enabled": true,
+    "tv_min_confidence": 0.55,
+    "tv_alignment_required": true,
+    "atr_period": 14,
+    "atr_min_ratio": 0.0015,
+    "adx_period": 14,
+    "adx_min": 18.0,
+    "payout_multiplier": 0.95,
+    "kelly_fraction": 0.25,
+    "max_risk_per_trade": 0.02,
+    "max_daily_loss_percent": 3.0,
+    "max_trades_per_day": 20,
+    "loss_streak_pause": 3,
+    "pause_hours": 24
+  },
+  "outputs": {
+    "decisions_log": "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/polymarket/runs/20260507T015411Z/decisions_log.csv",
+    "trades_log": "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/polymarket/runs/20260507T015411Z/trades_log.csv",
+    "summary_json": "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/polymarket/runs/20260507T015411Z/summary.json"
+  }
+}

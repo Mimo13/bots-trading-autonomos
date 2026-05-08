@@ -471,3 +471,47 @@
 - cTrader signal CSV: ✅ exists (age_s=68159)
 - Obsidian trading note: ✅ exists (age_s=0)
 
+## Supervisión 2026-05-08T08:00:20.555881Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=75343)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-08T10:05:55.478557Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: poly failed: Traceback (most recent call last):
+  File "/Users/mimo13/bots-trading-autonomos-runtime/polymarket_paper_bot.py", line 516, in <module>
+    main()
+    | portfolio failed: Traceback (most recent call last):
+  File "/Users/mimo13/bots-trading-autonomos-runtime/polymarket_portfolio_bot.py", line 468, in <module>
+    main() | fabian failed: Traceback (most recent call last):
+  File "/Users/mimo13/bots-trading-autonomos-runtime/fabian_pullback_bot.py", line 660, in <module>
+    main()
+     | fabianpro failed: Traceback (most recent call last):
+  File "/Users/mimo13/bots-trading-autonomos-runtime/fabian_pro_bot.py", line 566, in <module>
+    main()
+    ~~~~^ | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=82880)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-08T10:05:55.478554Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=82880)
+- Obsidian trading note: ✅ exists (age_s=0)
+
