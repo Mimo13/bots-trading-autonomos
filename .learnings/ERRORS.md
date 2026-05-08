@@ -1,0 +1,109 @@
+# Errors
+
+Command failures and integration errors.
+
+---
+
+## [ERR-20260508-001] path_mount_accent
+
+**Logged**: 2026-05-08T07:55:00+02:00
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+Initial project lookup failed because the user wrote `/Volumes/Almacén/...`, but the actual mounted path is `/Volumes/Almacen/...` without accent.
+
+### Details
+When working on bots-trading-autonomos, verify `/Volumes` if the supplied path with accent is missing. The existing project path is `/Volumes/Almacen/Desarrollo/bots-trading-autonomos`.
+
+### Suggested Action
+Normalize/check volume names before concluding a project path is absent.
+
+### Metadata
+- Source: error
+- Related Files: frontend/index.html, backend/main.py
+- Tags: path, macos, volumes
+
+---
+
+## [ERR-20260508-002] shell_pipe_heredoc_misuse
+
+**Logged**: 2026-05-08T08:01:00+02:00
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+A curl-to-python JSON parsing command failed because a pipeline was combined with a here-doc; stdin was consumed by the here-doc instead of the curl JSON.
+
+### Suggested Action
+For quick API JSON extraction, use `python -c` with `urllib.request`, save curl output to a temp file, or avoid here-docs in piped commands.
+
+### Metadata
+- Source: error
+- Tags: shell, json, curl
+
+---
+
+## [ERR-20260508-003] openclaw_skill_path_stale_after_update
+
+**Logged**: 2026-05-08T08:20:00+02:00
+**Priority**: medium
+**Status**: pending
+**Area**: tooling
+
+### Summary
+The injected GitHub skill path pointed to an older OpenClaw package version and `read` failed with ENOENT.
+
+### Details
+Skill location requested by runtime: `~/Library/pnpm/global/5/.pnpm/openclaw@2026.5.4_.../skills/github/SKILL.md`. The current docs context references OpenClaw 2026.5.7, so package-versioned skill paths can become stale after updates.
+
+### Suggested Action
+If a skill path fails after an update, continue with direct tools and log the stale skill-path issue. Prefer runtime-provided exact paths, but expect occasional post-update drift.
+
+### Metadata
+- Source: error
+- Tags: openclaw, skills, update
+
+---
+
+## [ERR-20260508-004] web_search_empty_json
+
+**Logged**: 2026-05-08T08:20:00+02:00
+**Priority**: low
+**Status**: pending
+**Area**: tooling
+
+### Summary
+`web_search` failed twice with `Unexpected end of JSON input` while checking exchange fee references.
+
+### Suggested Action
+When `web_search` returns malformed/empty provider JSON, retry later or use official docs manually via `web_fetch` if URLs are known. Avoid overstating mutable fee numbers without live verification.
+
+### Metadata
+- Source: error
+- Tags: web_search, exchange_fees
+
+---
+
+## [ERR-20260508-005] fabian_ghost_open_trades_collector
+
+**Logged**: 2026-05-08T12:00:00+02:00
+**Priority**: high
+**Status**: fixed
+**Area**: collector
+
+### Summary
+Fabian Python y FabianPro generaban filas de ENTRADA (pnl=0) en el CSV que el collector insertaba como operaciones abiertas con qty=0. 18 ghosts limpiadas de la BD.
+
+### Root Cause
+Los bots Fabian escriben dos filas por operación (entrada + salida). La entrada tiene side=BUY/SHORT, pnl=0, result=''. El collector insertaba ambas filas, pero la de entrada siempre tenía token_qty=0 (porque usaba abs(pnl)=0).
+
+### Fix Aplicado
+En `load_fabianpro()` y `load_fabian_py()`: añadir `if pnl == 0 and result == '': continue` antes de insertar. Así solo se guardan las filas de cierre con PnL real.
+
+### Metadata
+- Source: user_feedback
+- Related Files: scripts/collector.py
+- Tags: fabian, ghost_trades, collector

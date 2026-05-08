@@ -204,6 +204,9 @@ def load_fabianpro(conn):
                             side = 'COVER'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
                         else:
                             side = action; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                        # Saltar filas de entrada sin PnL (crean fantasmas con qty=0)
+                        if pnl == 0 and result == '':
+                            continue
                         # FabianPro siempre opera SOLUSDT; forzar símbolo si no viene en CSV
                         if 'symbol' not in x or not x.get('symbol'):
                             x['symbol'] = 'SOLUSDT'
@@ -277,6 +280,9 @@ def load_fabian_py(conn):
                         else:
                             side = action
                             result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                        # Saltar filas de entrada sin PnL (crean fantasmas con qty=0)
+                        if pnl == 0 and result == '':
+                            continue
                         # Fabian Python siempre opera SOLUSDT; forzar símbolo si no viene en CSV
                         if 'symbol' not in x or not x.get('symbol'):
                             x['symbol'] = 'SOLUSDT'
