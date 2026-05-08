@@ -1,0 +1,14 @@
+{
+  "initial_balance": 100.0,
+  "buy_threshold": 0.65,
+  "sell_threshold": 0.35,
+  "edge_min": 0.05,
+  "risk_per_trade": 0.10,
+  "max_position_pct": 0.30,
+  "take_profit_pct": 0.04,
+  "stop_loss_pct": 0.025,
+  "sell_on_reversal": true,
+  "sell_fraction_on_signal": 1.0,
+  "max_trades_per_day": 6,
+  "max_daily_loss_pct": 10.0
+}
