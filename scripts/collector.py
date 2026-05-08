@@ -204,6 +204,9 @@ def load_fabianpro(conn):
                             side = 'COVER'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
                         else:
                             side = action; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                        # FabianPro siempre opera SOLUSDT; forzar símbolo si no viene en CSV
+                        if 'symbol' not in x or not x.get('symbol'):
+                            x['symbol'] = 'SOLUSDT'
                         conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
                         values('fabianpro',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
                                      [ts, side, usd, usd, pnl, result, json.dumps(x)])
@@ -274,6 +277,9 @@ def load_fabian_py(conn):
                         else:
                             side = action
                             result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                        # Fabian Python siempre opera SOLUSDT; forzar símbolo si no viene en CSV
+                        if 'symbol' not in x or not x.get('symbol'):
+                            x['symbol'] = 'SOLUSDT'
                         conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
                         values('fabian_py',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
                                      [ts, side, usd, usd, pnl, result, json.dumps(x)])
