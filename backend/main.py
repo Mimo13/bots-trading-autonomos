@@ -18,6 +18,8 @@ BOT_META = {
     'fabian': {'label': 'FabiánPullback', 'short': 'Fabián cTrader', 'order': 10, 'family': 'forex'},
     'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', 'order': 20, 'family': 'crypto'},
     'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
+    'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet'},
+    'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet'},
     'turtle': {'label': 'TurtleBot', 'short': 'Turtle', 'order': 40, 'family': 'crypto'},
     'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket'},
     'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'polymarket'},
@@ -344,7 +346,9 @@ def stop(bot:str):
         subprocess.run(['pkill','-f','cTrader'])
     elif bot=='pfolio':
         subprocess.run(['pkill','-f','polymarket_portfolio_bot'])
-    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','pfolio':'pfolio','turtle':'turtle'}.get(bot)
+    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro',
+               'poly':'poly','pfolio':'pfolio','turtle':'turtle',
+               'fabian_live_pullback':'fabian_live_pullback','fabian_live_pro':'fabian_live_pro'}.get(bot)
     if db_name:
         try:
             with psycopg.connect(DB_URL) as c:

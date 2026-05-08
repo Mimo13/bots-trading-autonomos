@@ -357,28 +357,28 @@ class FabianLiveRunner:
         print(f"Output: {OUT_DIR}")
         print(f"Starting...")
 
-        signal.signal(signal.SIGINT, lambda s, f: setattr(self.state, 'running', False))
-        signal.signal(signal.SIGTERM, lambda s, f: setattr(self.state, 'running', False))
-
-        while self.state.running:
+        while True:
             try:
                 self.run_once()
-                # Guardar estado
                 self._save_status()
-                time.sleep(5)  # 5s entre ciclos
-            except KeyboardInterrupt:
-                print("\n[STOP] Interrupción recibida")
+                time.sleep(5)
+            except (KeyboardInterrupt, SystemExit):
+                print("\n[STOP] Fin")
                 break
+            except Exception as e:
+                print(f"[LOOP] {e}")
+                time.sleep(10)
 
         self._save_summary()
+        print("=== Stoged ===" if True else "")  # evitar print literal simple
         print("=== Stopped ===")
 
     def _save_status(self):
-        """Guardar estado actual en JSON."""
+        """Guardar estado actual en JSON y PostgreSQL."""
         status = {
             "bot_name": f"fabian_live_{self.mode}",
             "label": f"Fabian Live {self.mode} (testnet)",
-            "is_running": self.state.running,
+            "is_running": True,
             "balance_usd": round(self.state.balance, 2),
             "pnl_day_usd": round(self.state.daily_pnl, 2),
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -387,6 +387,22 @@ class FabianLiveRunner:
             "interval": self.interval,
         }
         STATUS_PATH.write_text(json.dumps(status, indent=2))
+
+        # También escribir a PostgreSQL para el dashboard
+        try:
+            import psycopg
+            with psycopg.connect(os.environ.get("DATABASE_URL", "postgresql:///bots_dashboard")) as conn:
+                conn.execute('''
+                insert into bot_status(bot_name,is_running,mode,balance_usd,pnl_day_usd,pnl_week_usd,tokens_value_usd,updated_at)
+                values(%s,%s,'testnet',%s,%s,0,0,now())
+                on conflict(bot_name) do update set
+                  is_running=excluded.is_running, balance_usd=excluded.balance_usd,
+                  pnl_day_usd=excluded.pnl_day_usd, updated_at=now()
+                ''', [f"fabian_live_{self.mode}", True,
+                      round(self.state.balance, 2), round(self.state.daily_pnl, 2)])
+                conn.commit()
+        except Exception as e:
+            print(f"[DB] upsert_status: {e}")
 
     def _save_summary(self):
         """Guardar resumen final."""
