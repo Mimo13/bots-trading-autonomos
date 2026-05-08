@@ -213,37 +213,13 @@ def load_fabianpro(conn):
                         conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
                         values('fabianpro',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
                                      [ts, side, usd, usd, pnl, result, json.dumps(x)])
-    # Read latest summary for balance + wallet
-    balance = INITIAL_BALANCE
-    tokens_value = 0.0
-    position_qty = 0.0
-    latest_mtime = 0
-    for entry in runs.glob('fabianpro_*'):
-        s = entry / 'summary.json'
-        if s.exists():
-            mt = s.stat().st_mtime
-            if mt > latest_mtime:
-                latest_mtime = mt
-                try:
-                    data = json.loads(s.read_text())
-                    balance = float(data.get('final_balance', INITIAL_BALANCE))
-                    position_qty = float(data.get('final_position_qty', 0))
-                    tokens_value = float(data.get('position_value', 0))
-                except Exception:
-                    pass
-    if position_qty > 0.0001 and tokens_value > 0:
-        price = tokens_value / position_qty
-        conn.execute('''insert into wallet_tokens(bot_name,token,amount,usd_value,updated_at)
-        values('fabianpro','TOKENS',%s,%s,now())
-        on conflict(bot_name,token) do update set amount=excluded.amount, usd_value=excluded.usd_value, updated_at=now()''',
-                     [round(position_qty, 6), round(tokens_value, 2)])
-        conn.execute('''insert into positions_open(bot_name,symbol,side,qty,entry_price,mark_price,unrealized_pnl_usd,updated_at)
-        values('fabianpro','TOKENS','BUY',%s,%s,%s,0,now())
-        on conflict(bot_name,symbol,side) do update set qty=excluded.qty, entry_price=excluded.entry_price, mark_price=excluded.mark_price, updated_at=now()''',
-                     [round(position_qty, 6), round(price, 4), round(price, 4)])
+    # Calcular balance desde BD: $100 + suma(PnL de todos los trades)
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabianpro'")
+    total_pnl = r.fetchone()[0]
+    balance = round(INITIAL_BALANCE + float(total_pnl), 2)
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
     upsert_status(conn, 'fabianpro', is_running=running, balance=balance,
-                  pnl_day=0, pnl_week=0, tokens=round(tokens_value, 2))
+                  pnl_day=0, pnl_week=0, tokens=0)
 
 
 def load_fabian_py(conn):
@@ -289,21 +265,10 @@ def load_fabian_py(conn):
                         conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
                         values('fabian_py',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
                                      [ts, side, usd, usd, pnl, result, json.dumps(x)])
-    # Read latest fabian_py summary for balance (inline, not via helper)
-    balance = INITIAL_BALANCE
-    latest_mtime = 0
-    for entry in sorted((ROOT / 'runtime/polymarket/runs').iterdir()):
-        if entry.name.startswith('fabian_') and not entry.name.startswith('fabianpro_'):
-            s = entry / 'summary.json'
-            if s.exists():
-                mt = s.stat().st_mtime
-                if mt > latest_mtime:
-                    latest_mtime = mt
-                    try:
-                        d = json.loads(s.read_text())
-                        balance = float(d.get('final_balance', d.get('final_equity', INITIAL_BALANCE)))
-                    except Exception:
-                        pass
+    # Calcular balance desde BD: $100 + suma(PnL de todos los trades)
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabian_py'")
+    total_pnl = r.fetchone()[0]
+    balance = round(INITIAL_BALANCE + float(total_pnl), 2)
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
     upsert_status(conn, 'fabian_py', is_running=running, balance=balance,
                   pnl_day=0, pnl_week=0, tokens=0)
