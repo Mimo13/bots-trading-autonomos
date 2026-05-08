@@ -14,6 +14,20 @@ DB_URL=os.getenv('DATABASE_URL','postgresql:///bots_dashboard')
 app=FastAPI(title='Bots Trading Dashboard')
 app.mount('/static', StaticFiles(directory=str(ROOT/'frontend')), name='static')
 
+BOT_META = {
+    'fabian': {'label': 'FabiánPullback', 'short': 'Fabián cTrader', 'order': 10, 'family': 'forex'},
+    'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', 'order': 20, 'family': 'crypto'},
+    'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
+    'turtle': {'label': 'TurtleBot', 'short': 'Turtle', 'order': 40, 'family': 'crypto'},
+    'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket'},
+    'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'polymarket'},
+}
+
+def _meta(bot: str):
+    base = {'label': bot, 'short': bot, 'order': 999, 'family': 'paper'}
+    base.update(BOT_META.get(bot, {}))
+    return base
+
 
 def _j(v):
     if isinstance(v, Decimal): return float(v)
@@ -27,6 +41,27 @@ def q(sql, params=None):
             cur.execute(sql, params or [])
             try: return cur.fetchall()
             except Exception: return []
+
+def _perf_summary(bot: str):
+    rows=q('''
+      select
+        coalesce(sum(pnl_usd),0) as pnl_total,
+        count(*) filter (where result in ('WIN','LOSS')) as closed_trades,
+        count(*) filter (where result='WIN') as wins,
+        count(*) filter (where result='LOSS') as losses,
+        coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate,
+        coalesce(sum(pnl_usd) filter (where ts >= now() - interval '24 hour'),0) as pnl_24h,
+        coalesce(sum(pnl_usd) filter (where ts >= now() - interval '7 day'),0) as pnl_7d
+      from trades
+      where bot_name=%s
+    ''',[bot])
+    if not rows:
+        return {'pnl_total':0,'closed_trades':0,'wins':0,'losses':0,'win_rate':0,'pnl_24h':0,'pnl_7d':0}
+    r=rows[0]
+    return {
+      'pnl_total':_j(r[0]), 'closed_trades':int(r[1] or 0), 'wins':int(r[2] or 0), 'losses':int(r[3] or 0),
+      'win_rate':_j(r[4]), 'pnl_24h':_j(r[5]), 'pnl_7d':_j(r[6])
+    }
 
 @app.get('/')
 def home():
@@ -48,7 +83,33 @@ def bot(bot:str):
     trades=[{k:_j(v) for k,v in zip(['ts','side','token_qty','usd_amount','pnl_usd','result'],r)} for r in t]
     positions=[{k:_j(v) for k,v in zip(['symbol','side','qty','entry_price','mark_price','unrealized_pnl_usd','updated_at'],r)} for r in p]
     wallet=[{k:_j(v) for k,v in zip(['token','amount','usd_value','updated_at'],r)} for r in w]
-    return {'status':status,'trades':trades,'positions':positions,'wallet':wallet}
+    status.update(_meta(bot))
+    return {'status':status,'trades':trades,'positions':positions,'wallet':wallet,'performance':_perf_summary(bot)}
+
+@app.get('/api/equity/{bot}')
+def equity(bot:str, days:int=7):
+    rows=q('''
+      select date_trunc('day', ts) as day, coalesce(sum(pnl_usd),0) as pnl
+      from trades
+      where bot_name=%s and ts >= now() - (%s::text || ' day')::interval
+      group by 1 order by 1
+    ''',[bot, max(1,min(days,60))])
+    cumulative=0.0
+    items=[]
+    for day,pnl in rows:
+        cumulative += float(pnl or 0)
+        items.append({'day':_j(day),'pnl':_j(pnl),'cumulative_pnl':cumulative})
+    return {'bot':bot,'days':days,'items':items}
+
+@app.get('/api/pnl-hourly/{bot}')
+def pnl_hourly(bot:str, hours:int=24):
+    rows=q('''
+      select date_trunc('hour', ts) as hour, coalesce(sum(pnl_usd),0) as pnl
+      from trades
+      where bot_name=%s and ts >= now() - (%s::text || ' hour')::interval
+      group by 1 order by 1
+    ''',[bot, max(1,min(hours,168))])
+    return {'bot':bot,'hours':hours,'items':[{'hour':_j(r[0]),'pnl':_j(r[1])} for r in rows]}
 
 def _latency_checks():
     return [
@@ -188,29 +249,84 @@ def weekly_compare():
     rows=q('''
       select bot_name,
              coalesce(sum(pnl_usd),0) as pnl_week,
-             count(*) as trades,
-             coalesce(avg(case when pnl_usd>0 then 1.0 else 0.0 end),0) as win_rate
+             count(*) filter (where result in ('WIN','LOSS')) as trades,
+             coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
       group by bot_name
       order by pnl_week desc
     ''')
-    items=[{'bot_name':r[0],'pnl_week':_j(r[1]),'trades':int(r[2]),'win_rate':_j(r[3])} for r in rows]
+    items=[]
+    for r in rows:
+        m=_meta(r[0])
+        items.append({'bot_name':r[0], 'label':m['label'], 'short':m['short'], 'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])})
     return {'items':items}
+
+def _run_pfolio(cfg_path: str = ''):
+    """Run portfolio bot with enriched CSV, output to portfolio_ timestamp dir."""
+    poly_input = ROOT / 'runtime/polymarket/polymarket_input_enriched.csv'
+    if not poly_input.exists():
+        poly_input = ROOT / 'runtime/polymarket/polymarket_base_input.csv'
+    if not poly_input.exists():
+        return
+    run_id = datetime.now(timezone.utc).strftime('portfolio_%Y%m%dT%H%M%SZ')
+    out_dir = ROOT / 'runtime/polymarket/runs' / run_id
+    cfg = ROOT / 'polymarket_portfolio_config.json'
+    cmd = [str(ROOT / '.venv/bin/python'), str(ROOT / 'polymarket_portfolio_bot.py'),
+           '--input', str(poly_input), '--config', str(cfg), '--output-dir', str(out_dir)]
+    subprocess.Popen(cmd, cwd=ROOT)
+
 
 @app.post('/api/bots/{bot}/start')
 def start(bot:str):
+    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','pfolio':'pfolio','turtle':'turtle'}.get(bot)
     if bot=='fabian':
         subprocess.run(['open','-ga','/Applications/cTrader.app'])
-        subprocess.run([str(ROOT/'run_bridge_cycle.sh')])
+        subprocess.Popen([str(ROOT/'run_bridge_cycle.sh')], cwd=ROOT)
     elif bot=='poly':
-        subprocess.run([str(ROOT/'run_supervisor_cycle.sh')])
+        subprocess.Popen([str(ROOT/'run_supervisor_cycle.sh')], cwd=ROOT)
+    elif bot=='pfolio':
+        _run_pfolio()
+    # Mark as running in DB immediately
+    if db_name:
+        try:
+            with psycopg.connect(DB_URL) as c:
+                with c.cursor() as cur:
+                    cur.execute('''
+                        insert into bot_status(bot_name,is_running,mode,balance_usd,pnl_day_usd,pnl_week_usd,tokens_value_usd,updated_at)
+                        values(%s,true,'paper',0,0,0,0,now())
+                        on conflict(bot_name) do update set is_running=true, updated_at=now()
+                    ''', [db_name])
+        except Exception as e:
+            return {'ok':False,'error':str(e)}
     return {'ok':True}
 
 @app.post('/api/bots/{bot}/stop')
 def stop(bot:str):
-    if bot=='fabian': subprocess.run(['pkill','-f','cTrader'])
-    return {'ok':True,'note':'modo real deshabilitado'}
+    if bot=='fabian':
+        subprocess.run(['pkill','-f','cTrader'])
+    elif bot=='pfolio':
+        subprocess.run(['pkill','-f','polymarket_portfolio_bot'])
+    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','pfolio':'pfolio','turtle':'turtle'}.get(bot)
+    if db_name:
+        try:
+            with psycopg.connect(DB_URL) as c:
+                with c.cursor() as cur:
+                    cur.execute('update bot_status set is_running=false, updated_at=now() where bot_name=%s', [db_name])
+        except Exception:
+            pass
+    return {'ok':True,'note':'detenido'}
+
+@app.get('/api/bots')
+def bots_list():
+    """List all registered bots dynamically."""
+    rows = q('select bot_name, is_running, mode from bot_status order by bot_name')
+    bots=[]
+    for r in rows:
+        m=_meta(r[0])
+        bots.append({'name': r[0], 'is_running': r[1], 'mode': r[2], **m})
+    bots.sort(key=lambda x:(x.get('order',999), x['name']))
+    return {'bots': bots}
 
 @app.get('/api/health')
 def health():

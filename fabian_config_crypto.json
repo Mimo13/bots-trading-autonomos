@@ -1,0 +1,20 @@
+{
+  "risk_percent": 2.0,
+  "reduced_risk_percent": 1.0,
+  "max_daily_loss_pct": 10.0,
+  "max_trades_per_session": 3,
+  "max_trades_per_day": 6,
+  "min_rr": 1.0,
+  "sl_buffer_pips": 0.2,
+  "enable_trailing": true,
+  "enable_break_even_at_1r": true,
+  "swing_lookback": 2,
+  "structure_bars": 60,
+  "body_avg_period": 14,
+  "force_body_multiplier": 1.2,
+  "max_wick_to_body_ratio": 2.0,
+  "entry_mode": 0,
+  "pending_order_expiry_minutes": 60,
+  "initial_balance": 100.0,
+  "crypto_mode": true
+}

@@ -88,8 +88,11 @@ def fetch_tv_signals(exchange_symbols: List[str], screener: str, interval: str) 
 
 def write_ctrader_signal(output_csv: Path, ctrader_symbol: str, tv_exchange_symbol: str, interval: str = "5m") -> None:
     screener = "forex"
-    signals = fetch_tv_signals([tv_exchange_symbol], screener=screener, interval=interval)
-    sig = signals[tv_exchange_symbol]
+    try:
+        signals = fetch_tv_signals([tv_exchange_symbol], screener=screener, interval=interval)
+        sig = signals[tv_exchange_symbol]
+    except Exception:
+        sig = TvSignal("NEUTRAL", 0.0)
 
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -133,7 +136,11 @@ def enrich_polymarket_csv(input_csv: Path, output_csv: Path, interval: str = "5m
 
     tv_lookup: Dict[str, TvSignal] = {}
     for screener, syms in by_screener.items():
-        tv_lookup.update(fetch_tv_signals(syms, screener=screener, interval=interval))
+        try:
+            tv_lookup.update(fetch_tv_signals(syms, screener=screener, interval=interval))
+        except Exception:
+            for s in syms:
+                tv_lookup.setdefault(s, TvSignal("NEUTRAL", 0.0))
 
     if "tv_recommendation" not in fieldnames:
         fieldnames.append("tv_recommendation")
