@@ -72,6 +72,16 @@ def bot(bot:str):
     s=q('select bot_name,is_running,mode,balance_usd,pnl_day_usd,pnl_week_usd,tokens_value_usd,updated_at from bot_status where bot_name=%s',[bot])
     t=q('select ts,side,token_qty,usd_amount,pnl_usd,result from trades where bot_name=%s order by ts desc limit 120',[bot])
     p=q('select symbol,side,qty,entry_price,mark_price,unrealized_pnl_usd,updated_at from positions_open where bot_name=%s order by symbol',[bot])
+    # Open operations are real DB rows from trades whose result is still empty.
+    # This keeps the dashboard consistent with the "Sin cerrar" donut: if a trade is counted
+    # as unclosed there, it must also be visible in the open-operations table.
+    open_t=q('''
+      select ts,side,token_qty,usd_amount,pnl_usd,result,raw
+      from trades
+      where bot_name=%s and coalesce(result,'')=''
+      order by ts desc
+      limit 300
+    ''',[bot])
     w=q('select token,amount,usd_value,updated_at from wallet_tokens where bot_name=%s order by usd_value desc',[bot])
 
     if s:
@@ -82,6 +92,33 @@ def bot(bot:str):
 
     trades=[{k:_j(v) for k,v in zip(['ts','side','token_qty','usd_amount','pnl_usd','result'],r)} for r in t]
     positions=[{k:_j(v) for k,v in zip(['symbol','side','qty','entry_price','mark_price','unrealized_pnl_usd','updated_at'],r)} for r in p]
+    for ts,side,token_qty,usd_amount,pnl_usd,result,raw in open_t:
+        raw = raw or {}
+        try:
+            entry = raw.get('entry') or raw.get('price')
+        except AttributeError:
+            entry = None
+        try:
+            symbol = raw.get('symbol')
+            sl = raw.get('sl')
+            tp = raw.get('tp')
+            reason = raw.get('reason')
+        except AttributeError:
+            symbol = sl = tp = reason = None
+        positions.append({
+            'symbol': symbol,
+            'side': side,
+            'qty': _j(token_qty),
+            'entry_price': _j(entry),
+            'mark_price': None,
+            'unrealized_pnl_usd': None,
+            'updated_at': _j(ts),
+            'usd_amount': _j(usd_amount),
+            'sl': _j(sl),
+            'tp': _j(tp),
+            'reason': reason,
+            'source': 'open_trade'
+        })
     wallet=[{k:_j(v) for k,v in zip(['token','amount','usd_value','updated_at'],r)} for r in w]
     status.update(_meta(bot))
     return {'status':status,'trades':trades,'positions':positions,'wallet':wallet,'performance':_perf_summary(bot)}
