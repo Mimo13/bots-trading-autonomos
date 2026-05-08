@@ -217,9 +217,14 @@ def load_fabianpro(conn):
     r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabianpro'")
     total_pnl = r.fetchone()[0]
     balance = round(INITIAL_BALANCE + float(total_pnl), 2)
+    # PnL diario y semanal desde trades
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabianpro' and ts >= current_date")
+    day_pnl = float(r.fetchone()[0])
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabianpro' and ts >= current_date - interval '7 days'")
+    week_pnl = float(r.fetchone()[0])
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
     upsert_status(conn, 'fabianpro', is_running=running, balance=balance,
-                  pnl_day=0, pnl_week=0, tokens=0)
+                  pnl_day=round(day_pnl, 2), pnl_week=round(week_pnl, 2), tokens=0)
 
 
 def load_fabian_py(conn):
@@ -269,9 +274,14 @@ def load_fabian_py(conn):
     r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabian_py'")
     total_pnl = r.fetchone()[0]
     balance = round(INITIAL_BALANCE + float(total_pnl), 2)
+    # PnL diario y semanal desde trades
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabian_py' and ts >= current_date")
+    day_pnl = float(r.fetchone()[0])
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabian_py' and ts >= current_date - interval '7 days'")
+    week_pnl = float(r.fetchone()[0])
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
     upsert_status(conn, 'fabian_py', is_running=running, balance=balance,
-                  pnl_day=0, pnl_week=0, tokens=0)
+                  pnl_day=round(day_pnl, 2), pnl_week=round(week_pnl, 2), tokens=0)
 
 
 def load_turtle(conn):
