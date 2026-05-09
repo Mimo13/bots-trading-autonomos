@@ -9911,3 +9911,30 @@
 2026-05-09T17:47:15.861173Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
 2026-05-09T17:47:15.861334Z | ages: ctrader_signal=211s last_runner_status=3875s
 2026-05-09T17:47:15.861378Z | health: OK signal_age=211s status_age=3875s
+2026-05-09T17:48:15.966122Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T17:48:15.966406Z | ages: ctrader_signal=271s last_runner_status=3935s
+2026-05-09T17:48:15.966462Z | health: OK signal_age=271s status_age=3935s
+2026-05-09T17:49:16.108151Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T17:49:16.108459Z | ages: ctrader_signal=31s last_runner_status=3995s
+2026-05-09T17:49:16.108501Z | health: OK signal_age=31s status_age=3995s
+2026-05-09T17:50:16.245131Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T17:50:16.245320Z | ages: ctrader_signal=91s last_runner_status=4055s
+2026-05-09T17:50:16.245368Z | health: OK signal_age=91s status_age=4055s
+2026-05-09T17:51:16.373648Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T17:51:16.373803Z | ages: ctrader_signal=151s last_runner_status=4116s
+2026-05-09T17:51:16.373848Z | health: OK signal_age=151s status_age=4116s
+2026-05-09T17:52:16.504906Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T17:52:16.505083Z | ages: ctrader_signal=211s last_runner_status=4176s
+2026-05-09T17:52:16.505140Z | health: OK signal_age=211s status_age=4176s
+2026-05-09T17:53:16.646917Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T17:53:16.647076Z | ages: ctrader_signal=271s last_runner_status=4236s
+2026-05-09T17:53:16.647120Z | health: OK signal_age=271s status_age=4236s
+2026-05-09T17:54:16.783485Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T17:54:16.783675Z | ages: ctrader_signal=30s last_runner_status=4296s
+2026-05-09T17:54:16.783722Z | health: OK signal_age=30s status_age=4296s
+2026-05-09T17:55:16.891165Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T17:55:16.891561Z | ages: ctrader_signal=6s last_runner_status=5s
+2026-05-09T17:55:16.891612Z | health: OK signal_age=6s status_age=5s
+2026-05-09T17:56:17.030798Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T17:56:17.031166Z | ages: ctrader_signal=66s last_runner_status=65s
+2026-05-09T17:56:17.031217Z | health: OK signal_age=66s status_age=65s
