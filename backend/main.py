@@ -369,6 +369,29 @@ def bots_list():
     bots.sort(key=lambda x:(x.get('order',999), x['name']))
     return {'bots': bots}
 
+@app.get('/api/ai-advisor/stats')
+def ai_advisor_stats():
+    log_path = ROOT / 'runtime/logs/ai_advisor_validations.csv'
+    if not log_path.exists():
+        return {'enabled': False, 'total': 0, 'validated': 0, 'rejected': 0, 'last_10': []}
+    import csv
+    rows = []
+    with log_path.open() as f:
+        for r in csv.DictReader(f):
+            rows.append(r)
+    total = len(rows)
+    validated = sum(1 for r in rows if r.get('decision') == 'EXECUTE')
+    rejected = max(0, total - validated)
+    last_10 = rows[-10:] if rows else []
+    return {
+        'enabled': bool(rows),
+        'total': total,
+        'validated': validated,
+        'rejected': rejected,
+        'reject_rate': round(rejected / max(1, total) * 100, 1),
+        'last_10': last_10[::-1],
+    }
+
 @app.get('/api/health')
 def health():
     return {'ok':True}

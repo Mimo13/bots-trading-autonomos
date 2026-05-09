@@ -30,6 +30,7 @@ from fabian_pullback_bot import (
     find_entry_zone, build_trade_plan,
     get_session, load_config,
 )
+from ai_advisor import validate_signal
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -319,7 +320,37 @@ class FabianLiveRunner:
                 "balance": round(self.state.balance, 2),
             })
 
-            # 8. Ejecutar
+            # 8. AI-Advisor — validar señal antes de ejecutar
+            if plan:
+                advisor_signal = {
+                    'symbol': self.symbol,
+                    'direction': 'BUY' if plan.action.startswith('BUY') else 'SHORT',
+                    'confidence': round(min(1.0, max(0.0, plan.rr / (self.cfg.min_rr or 0.5) if plan.rr > 0 else 0.5)), 2),
+                    'price': plan.entry,
+                    'reason': plan.reason,
+                    'context': {
+                        'rr': round(plan.rr, 2),
+                        'sl_distance': round(abs(plan.entry - plan.sl), 4),
+                        'tp_distance': round(abs(plan.tp - plan.entry), 4),
+                        'price': round(bar.close, 4),
+                    }
+                }
+                validation = validate_signal(advisor_signal)
+                if validation.get('action') == 'REJECT':
+                    self.log_decision({
+                        "ts": bar.ts.isoformat(), "session": session,
+                        "structure": structure, "action": "REJECTED",
+                        "reason": f"AI: {validation.get('reason','no')}",
+                        "open": bar.open, "high": bar.high, "low": bar.low, "close": bar.close,
+                        "entry": plan.entry if plan else 0,
+                        "sl": plan.sl if plan else 0,
+                        "tp": plan.tp if plan else 0,
+                        "rr": round(plan.rr, 2) if plan else 0,
+                        "balance": round(self.state.balance, 2),
+                    })
+                    plan = None
+
+            # 9. Ejecutar
             if plan:
                 result = self.execute_trade(plan)
                 if result:

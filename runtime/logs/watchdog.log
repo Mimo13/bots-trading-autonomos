@@ -8417,3 +8417,27 @@
 2026-05-09T09:27:01.876370Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
 2026-05-09T09:27:01.876759Z | ages: ctrader_signal=267s last_runner_status=1921s
 2026-05-09T09:27:01.876827Z | health: OK signal_age=267s status_age=1921s
+2026-05-09T09:29:02.129529Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:29:02.129771Z | ages: ctrader_signal=12s last_runner_status=12s
+2026-05-09T09:29:02.129818Z | health: OK signal_age=12s status_age=12s
+2026-05-09T09:30:02.229458Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:30:02.229713Z | ages: ctrader_signal=72s last_runner_status=72s
+2026-05-09T09:30:02.229766Z | health: OK signal_age=72s status_age=72s
+2026-05-09T09:31:02.361557Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:31:02.361708Z | ages: ctrader_signal=132s last_runner_status=132s
+2026-05-09T09:31:02.361748Z | health: OK signal_age=132s status_age=132s
+2026-05-09T09:32:02.489593Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:32:02.489954Z | ages: ctrader_signal=192s last_runner_status=192s
+2026-05-09T09:32:02.490002Z | health: OK signal_age=192s status_age=192s
+2026-05-09T09:33:02.585011Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:33:02.585239Z | ages: ctrader_signal=26s last_runner_status=252s
+2026-05-09T09:33:02.585291Z | health: OK signal_age=26s status_age=252s
+2026-05-09T09:34:02.710718Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:34:02.710898Z | ages: ctrader_signal=86s last_runner_status=312s
+2026-05-09T09:34:02.710947Z | health: OK signal_age=86s status_age=312s
+2026-05-09T09:35:02.814986Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:35:02.815283Z | ages: ctrader_signal=146s last_runner_status=372s
+2026-05-09T09:35:02.815340Z | health: OK signal_age=146s status_age=372s
+2026-05-09T09:36:02.953804Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:36:02.953973Z | ages: ctrader_signal=206s last_runner_status=433s
+2026-05-09T09:36:02.954024Z | health: OK signal_age=206s status_age=433s

@@ -250,6 +250,27 @@ def validate_signal(signal: dict) -> dict:
 
     out = {'action': action, 'confidence': confidence, 'reason': reason}
 
+    # Log every decision to CSV
+    if cfg.get('log_all_decisions', True):
+        log_dir = ROOT / 'runtime' / 'logs'
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / 'ai_advisor_validations.csv'
+        import csv
+        log_exists = log_file.exists()
+        with log_file.open('a', newline='') as f:
+            w = csv.writer(f)
+            if not log_exists:
+                w.writerow(['timestamp_utc', 'symbol', 'direction', 'price', 'decision', 'confidence', 'reason'])
+            w.writerow([
+                datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                signal.get('symbol', ''),
+                signal.get('direction', ''),
+                signal.get('price', 0),
+                action,
+                round(confidence, 2),
+                reason[:100],
+            ])
+
     # Guardar en caché
     _cache[ck] = (now, out)
 
