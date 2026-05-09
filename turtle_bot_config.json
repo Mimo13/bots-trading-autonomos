@@ -1,14 +1,14 @@
 {
   "initial_balance": 100.0,
-  "risk_per_trade": 0.02,
-  "donchian_period": 10,
+  "risk_per_trade": 0.04,
+  "donchian_period": 5,
   "atr_period": 14,
   "atr_stop_multiplier": 1.5,
   "pyramid_levels": 3,
   "pyramid_increment_pct": 0.5,
   "pyramid_unit_size_pct": 0.5,
-  "max_risk_per_position": 0.03,
-  "max_positions": 4,
+  "max_risk_per_position": 0.04,
+  "max_positions": 6,
   "max_daily_loss_pct": 10.0,
   "enable_pyramiding": true,
   "enable_trailing": true,
@@ -16,6 +16,8 @@
   "exit_on_signal_reversal": false,
   "symbols": [
     "SOLUSDT",
-    "ADAUSDT"
+    "ADAUSDT",
+    "DOGEUSDT",
+    "LINKUSDT"
   ]
 }

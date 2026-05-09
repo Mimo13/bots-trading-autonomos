@@ -1,0 +1,33 @@
+{
+  "initial_balance": 100.0,
+  "final_balance_usd": 77.38,
+  "xrp_hold": 16.268901,
+  "xrp_value_usd": 23.11,
+  "total_equity": 100.48,
+  "total_pnl": 0.48,
+  "total_trades": 5,
+  "grid_min_price": 1.5,
+  "grid_max_price": 4.0,
+  "grid_levels": 10,
+  "config": {
+    "initial_balance": 100.0,
+    "initial_xrp": 0.0,
+    "base_asset": "XRP",
+    "quote_asset": "USDT",
+    "symbol": "XRPUSDT",
+    "grid_min_price": 1.5,
+    "grid_max_price": 4.0,
+    "grid_levels": 10,
+    "risk_per_trade_pct": 0.05,
+    "max_xrp_hold_pct": 0.9,
+    "rebalance_interval_hours": 6,
+    "tv_filter_enabled": false,
+    "tv_min_confidence": 0.4,
+    "ai_advisor_enabled": true,
+    "ai_advisor_interval_hours": 6
+  },
+  "outputs": {
+    "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/xrp_grid_20260509T131650Z/decisions_log.csv",
+    "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/xrp_grid_20260509T131650Z/trades_log.csv"
+  }
+}
