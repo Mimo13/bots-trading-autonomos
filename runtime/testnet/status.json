@@ -1,10 +1,10 @@
 {
-  "bot_name": "fabian_live_pullback",
-  "label": "Fabian Live pullback (testnet)",
+  "bot_name": "fabian_live_pro",
+  "label": "Fabian Live pro (testnet)",
   "is_running": true,
   "balance_usd": 100.0,
   "pnl_day_usd": 0.0,
-  "updated_at": "2026-05-09T12:22:29.242116+00:00",
+  "updated_at": "2026-05-09T13:03:24.206636+00:00",
   "mode": "testnet",
   "symbol": "SOLUSDT",
   "interval": "5m"
