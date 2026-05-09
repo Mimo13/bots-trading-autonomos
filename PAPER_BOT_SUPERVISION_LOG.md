@@ -350,3 +350,10 @@
 - cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
+## Supervisión 2026-05-09T11:55:03.585480Z
+
+- Runner: ✅ OK
+- warning: salida no JSON
+- cTrader signal CSV: ✅ exists (age_s=4)
+- Obsidian trading note: ✅ exists (age_s=4)
+

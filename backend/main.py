@@ -427,15 +427,19 @@ def binance_personal_portfolio():
             quote_asset = asset[2:] if asset.startswith('LD') and len(asset) > 2 else asset
             if quote_asset == 'USDT':
                 usd_value=qty
+                change_24h=0.0
             else:
                 try:
                     t=client.get_ticker(f"{quote_asset}USDT")
-                    usd_value=qty*float(t.get('lastPrice') or 0)
+                    last_price=float(t.get('lastPrice') or 0)
+                    usd_value=qty*last_price
+                    change_24h=float(t.get('priceChangePercent') or 0)
                 except Exception:
                     usd_value=None
+                    change_24h=None
             if usd_value is not None:
                 total += usd_value
-            items.append({'asset':asset,'free':free,'locked':locked,'qty':qty,'usd_value':usd_value})
+            items.append({'asset':asset,'free':free,'locked':locked,'qty':qty,'usd_value':usd_value,'change_24h':change_24h})
 
         items.sort(key=lambda x: (x.get('usd_value') is None, -(x.get('usd_value') or 0)))
         return {'ok':True,'total_usd':total,'items':items,'updated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}

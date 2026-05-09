@@ -1,0 +1,53 @@
+{
+  "initial_balance": 100.0,
+  "final_balance": 102.0,
+  "total_pnl": 2.0,
+  "total_trades": 1,
+  "wins": 1,
+  "losses": 0,
+  "win_rate_percent": 100.0,
+  "max_drawdown_percent": 0.0,
+  "config": {
+    "risk_percent": 2.0,
+    "reduced_risk_percent": 1.0,
+    "max_daily_loss_pct": 10.0,
+    "max_trades_per_session": 3,
+    "max_trades_per_day": 6,
+    "min_rr": 1.0,
+    "sl_buffer_pips": 0.2,
+    "enable_trailing": true,
+    "enable_break_even_at_1r": true,
+    "swing_lookback": 2,
+    "structure_bars": 60,
+    "body_avg_period": 14,
+    "force_body_multiplier": 1.2,
+    "max_wick_to_body_ratio": 2.0,
+    "pending_order_expiry_minutes": 60,
+    "entry_mode": 0,
+    "crypto_mode": true,
+    "london_start": [
+      7,
+      0
+    ],
+    "london_end": [
+      12,
+      0
+    ],
+    "ny_start": [
+      13,
+      30
+    ],
+    "ny_end": [
+      20,
+      0
+    ],
+    "avoid_first_session_minutes": 15,
+    "max_spread_pips": 2.0,
+    "initial_balance": 100.0
+  },
+  "outputs": {
+    "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T115503Z/decisions_log.csv",
+    "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T115503Z/trades_log.csv",
+    "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T115503Z/summary.json"
+  }
+}
