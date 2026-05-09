@@ -6,12 +6,10 @@ Cada bot puede consultar si una señal debe ejecutarse o rechazarse.
 Config: ai_advisor_config.json
 """
 from __future__ import annotations
-import json, logging, os, subprocess, time
+import json, logging, os, subprocess, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-
-import requests
 
 ROOT = Path(__file__).resolve().parent
 
@@ -84,17 +82,14 @@ def _call_llm(system_prompt: str, user_message: str, cfg: dict) -> Optional[dict
     }
 
     try:
-        resp = requests.post(
+        req = urllib.request.Request(
             'https://api.githubcopilot.com/chat/completions',
-            headers=headers,
-            json=payload,
-            timeout=cfg.get('timeout_seconds', 5),
+            data=json.dumps(payload).encode('utf-8'),
+            headers=headers
         )
-        resp.raise_for_status()
-        data = resp.json()
-        content = data['choices'][0]['message']['content']
-
-        # Parsear la respuesta JSON
+        with urllib.request.urlopen(req, timeout=cfg.get('timeout_seconds', 5)) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            content = data['choices'][0]['message']['content']
         try:
             result = json.loads(content)
         except json.JSONDecodeError:

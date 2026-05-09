@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/Users/mimo13/bots-trading-autonomos-runtime/fabian_live_runner.py", line 33, in <module>
+    from ai_advisor import validate_signal
+  File "/Users/mimo13/bots-trading-autonomos-runtime/ai_advisor.py", line 14, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "/Users/mimo13/bots-trading-autonomos-runtime/fabian_live_runner.py", line 33, in <module>
+    from ai_advisor import validate_signal
+  File "/Users/mimo13/bots-trading-autonomos-runtime/ai_advisor.py", line 14, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'

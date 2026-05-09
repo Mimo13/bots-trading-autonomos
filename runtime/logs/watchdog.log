@@ -8441,3 +8441,12 @@
 2026-05-09T09:36:02.953804Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
 2026-05-09T09:36:02.953973Z | ages: ctrader_signal=206s last_runner_status=433s
 2026-05-09T09:36:02.954024Z | health: OK signal_age=206s status_age=433s
+2026-05-09T09:37:03.067188Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:37:03.067394Z | ages: ctrader_signal=266s last_runner_status=493s
+2026-05-09T09:37:03.067453Z | health: OK signal_age=266s status_age=493s
+2026-05-09T09:38:03.166544Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:38:03.166792Z | ages: ctrader_signal=26s last_runner_status=553s
+2026-05-09T09:38:03.166859Z | health: OK signal_age=26s status_age=553s
+2026-05-09T09:39:03.282742Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T09:39:03.282988Z | ages: ctrader_signal=86s last_runner_status=613s
+2026-05-09T09:39:03.283051Z | health: OK signal_age=86s status_age=613s
