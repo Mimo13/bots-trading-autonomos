@@ -21,7 +21,7 @@ BOT_META = {
     'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet', 'ai': True},
     'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet', 'ai': True},
     'turtle': {'label': 'TurtleBot', 'short': 'Turtle', 'order': 40, 'family': 'crypto'},
-    'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket'},
+    'xrp_grid': {'label': 'XRP Grid Bot', 'short': 'XRPGrid', 'order': 48, 'family': 'crypto'},
     'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'polymarket'},
 }
 
@@ -376,7 +376,7 @@ def stop(bot:str):
 @app.get('/api/bots')
 def bots_list():
     """List all registered bots dynamically."""
-    rows = q('select bot_name, is_running, mode from bot_status order by bot_name')
+    rows = q("select bot_name, is_running, mode from bot_status where bot_name <> 'poly' order by bot_name")
     bots=[]
     for r in rows:
         m=_meta(r[0])

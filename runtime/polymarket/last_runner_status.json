@@ -1,5 +1,5 @@
 {
-  "ts_utc": "2026-05-09T09:55:02.769699Z",
+  "ts_utc": "2026-05-09T10:49:08.290309Z",
   "ctrader_signal_written": true,
   "notes": [
     "poly run ok",
@@ -7,17 +7,19 @@
     "fabian run ok",
     "fabianpro run ok",
     "turtle run ok",
-    "turtle parse failed"
+    "turtle parse failed",
+    "xrp_grid run ok",
+    "grid advisor started"
   ],
   "poly_simulated": true,
   "poly_summary": {
     "initial_equity": 100.0,
-    "final_equity": 96.422078,
-    "total_pnl": -3.577922,
-    "total_trades": 6,
-    "wins": 2,
+    "final_equity": 95.817089,
+    "total_pnl": -4.182911,
+    "total_trades": 5,
+    "wins": 1,
     "losses": 4,
-    "win_rate_percent": 33.3333,
+    "win_rate_percent": 20.0,
     "max_drawdown_percent": 4.4192,
     "config": {
       "initial_equity": 100.0,
@@ -39,9 +41,9 @@
       "only_up": true
     },
     "outputs": {
-      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/20260509T095503Z/decisions_log.csv",
-      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/20260509T095503Z/trades_log.csv",
-      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/20260509T095503Z/summary.json"
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/20260509T104908Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/20260509T104908Z/trades_log.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/20260509T104908Z/summary.json"
     }
   },
   "portfolio_simulated": true,
@@ -76,10 +78,10 @@
       "max_daily_loss_pct": 10.0
     },
     "outputs": {
-      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T095503Z/decisions_log.csv",
-      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T095503Z/trades_log.csv",
-      "portfolio_snapshots": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T095503Z/portfolio_snapshots.csv",
-      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T095503Z/summary.json"
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T104908Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T104908Z/trades_log.csv",
+      "portfolio_snapshots": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T104908Z/portfolio_snapshots.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T104908Z/summary.json"
     }
   },
   "fabian_simulated": true,
@@ -131,9 +133,9 @@
       "initial_balance": 100.0
     },
     "outputs": {
-      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T095503Z/decisions_log.csv",
-      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T095503Z/trades_log.csv",
-      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T095503Z/summary.json"
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T104908Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T104908Z/trades_log.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T104908Z/summary.json"
     }
   },
   "fabianpro_simulated": true,
@@ -180,11 +182,45 @@
       "initial_balance": 100.0
     },
     "outputs": {
-      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T095503Z/decisions_log.csv",
-      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T095503Z/trades_log.csv",
-      "portfolio_snapshots": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T095503Z/portfolio_snapshots.csv",
-      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T095503Z/summary.json"
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T104908Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T104908Z/trades_log.csv",
+      "portfolio_snapshots": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T104908Z/portfolio_snapshots.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T104908Z/summary.json"
     }
   },
-  "turtle_simulated": true
+  "turtle_simulated": true,
+  "xrp_grid_simulated": true,
+  "xrp_grid_summary": {
+    "initial_balance": 100.0,
+    "final_balance_usd": 77.38,
+    "xrp_hold": 16.314659,
+    "xrp_value_usd": 23.18,
+    "total_equity": 100.56,
+    "total_pnl": 0.56,
+    "total_trades": 5,
+    "grid_min_price": 1.5,
+    "grid_max_price": 4.0,
+    "grid_levels": 10,
+    "config": {
+      "initial_balance": 100.0,
+      "initial_xrp": 0.0,
+      "base_asset": "XRP",
+      "quote_asset": "USDT",
+      "symbol": "XRPUSDT",
+      "grid_min_price": 1.5,
+      "grid_max_price": 4.0,
+      "grid_levels": 10,
+      "risk_per_trade_pct": 0.05,
+      "max_xrp_hold_pct": 0.9,
+      "rebalance_interval_hours": 6,
+      "tv_filter_enabled": false,
+      "tv_min_confidence": 0.4,
+      "ai_advisor_enabled": true,
+      "ai_advisor_interval_hours": 6
+    },
+    "outputs": {
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/xrp_grid_20260509T104908Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/xrp_grid_20260509T104908Z/trades_log.csv"
+    }
+  }
 }

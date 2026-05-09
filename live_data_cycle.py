@@ -22,7 +22,7 @@ def live_data_cycle():
     print(f"[{ts}] 🔄 Live data cycle starting")
     
     # 1. Fetch live data for tracked assets
-    assets = ["SOLUSDT", "ADAUSDT", "DOGEUSDT", "BTCUSDT"]
+    assets = ["SOLUSDT", "ADAUSDT", "DOGEUSDT", "BTCUSDT", "XRPUSDT"]
     feed_dir = ROOT / "runtime" / "live"
     feed_dir.mkdir(parents=True, exist_ok=True)
     

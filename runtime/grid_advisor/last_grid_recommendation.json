@@ -1,0 +1,19 @@
+{
+  "ts": "2026-05-09T10:49:08.782395Z",
+  "market_data": {
+    "sources_available": {
+      "xrpscan": true,
+      "tradingview": true
+    },
+    "sources_missing": []
+  },
+  "grid": {
+    "grid_min_price": 2.1,
+    "grid_max_price": 2.9,
+    "grid_levels": 10,
+    "confidence": 0.65,
+    "reason": "Datos recientes de mercado no muestran rupturas claras, pero el rango $2.10-$2.90 cubre soportes y resistencias relevantes para XRP en este ciclo. El grid es amplio para adaptarse a la volatilidad.",
+    "market_regime": "neutral",
+    "next_rebalance_hours": 12
+  }
+}

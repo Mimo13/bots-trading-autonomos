@@ -333,6 +333,50 @@ def load_turtle(conn):
                   pnl_day=0, pnl_week=0, tokens=0)
 
 
+def load_generic_run_bot(conn, bot_name: str, prefix: str):
+    runs = ROOT / 'runtime/polymarket/runs'
+    if runs.exists():
+        for entry in runs.glob(f'{prefix}_*'):
+            tl = entry / 'trades_log.csv'
+            if tl.exists():
+                with tl.open() as f:
+                    for x in csv.DictReader(f):
+                        ts_str = x.get('ts', '')
+                        try:
+                            ts = parse_ts(ts_str)
+                        except Exception:
+                            continue
+                        pnl = float(x.get('pnl', 0) or 0)
+                        side = x.get('side', '').upper()
+                        qty = float(x.get('qty', 0) or 0)
+                        usd = float(x.get('usd_amount', 0) or abs(pnl) or 0)
+                        if side in ('BUY', 'SHORT'):
+                            result = ''
+                        elif side in ('SELL', 'COVER'):
+                            result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                        else:
+                            result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                        conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
+                        values(%s,%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
+                                     [bot_name, ts, side, qty, usd, pnl, result, json.dumps(x)])
+
+    balance = INITIAL_BALANCE
+    latest_mtime = 0
+    if runs.exists():
+        for entry in runs.iterdir():
+            if entry.name.startswith(f'{prefix}_'):
+                s = entry / 'summary.json'
+                if s.exists() and s.stat().st_mtime > latest_mtime:
+                    latest_mtime = s.stat().st_mtime
+                    try:
+                        d = json.loads(s.read_text())
+                        balance = float(d.get('final_balance', d.get('final_equity', d.get('total_equity', INITIAL_BALANCE))))
+                    except Exception:
+                        pass
+    running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
+    upsert_status(conn, bot_name, is_running=running, balance=balance, pnl_day=0, pnl_week=0, tokens=0)
+
+
 def main():
     with psycopg.connect(DB_URL, autocommit=True) as conn:
         ensure_schema(conn)
@@ -341,6 +385,8 @@ def main():
         load_pfolio(conn)
         load_fabian_py(conn)
         load_fabianpro(conn)
+        load_generic_run_bot(conn, 'turtle', 'turtle')
+        load_generic_run_bot(conn, 'xrp_grid', 'xrp_grid')
 
 
 if __name__ == '__main__':

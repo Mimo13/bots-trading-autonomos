@@ -20,6 +20,7 @@ FABIAN_CONFIG = ROOT / 'fabian_config_crypto.json'
 FABIANPRO_CONFIG = ROOT / 'fabian_pro_config.json'
 TURTLE_CONFIG = ROOT / 'turtle_bot_config.json'
 POLY_RUNS_DIR = ROOT / 'runtime/polymarket/runs'
+XRP_GRID_CONFIG = ROOT / 'xrp_grid_config.json'
 PYTHON = str(ROOT / '.venv/bin/python')
 
 INITIAL_BALANCE = 100.0
@@ -134,6 +135,27 @@ def run() -> dict:
                 status['notes'].append('turtle parse failed')
         else:
             status['notes'].append(f'turtle failed: {cp5.stderr.strip()[:150]}')
+
+    # 6. XRP Grid Bot — cuadrícula dinámica asistida por IA
+    xrp_feed = ROOT / 'runtime/live/XRPUSDT_5m.csv'
+    if xrp_feed.exists():
+        out6 = POLY_RUNS_DIR / f'xrp_grid_{ts}'
+        cfg6 = json.loads(XRP_GRID_CONFIG.read_text())
+        cfg6['initial_balance'] = INITIAL_BALANCE
+        tmp6 = POLY_RUNS_DIR / f'_cfg_xrp_{ts}.json'
+        tmp6.write_text(json.dumps(cfg6))
+        cmd6 = [PYTHON, str(ROOT / 'xrp_grid_bot.py'),
+                '--input', str(xrp_feed), '--config', str(tmp6), '--output-dir', str(out6)]
+        s6 = run_bot(cmd6, 'xrp_grid', 'final_balance', status)
+        if s6: status['xrp_grid_summary'] = s6
+        if tmp6.exists(): tmp6.unlink()
+
+    # 7. AI Grid Advisor (recalcular cuadrícula)
+    try:
+        subprocess.Popen([PYTHON, str(ROOT / 'ai_grid_advisor.py')], cwd=ROOT)
+        status['notes'].append('grid advisor started')
+    except Exception as e:
+        status['notes'].append(f'grid advisor error: {str(e)[:80]}')
 
     # Obsidian log (optional)
     subprocess.run(['python3', str(ROOT / 'update_obsidian_trading_log.py')],

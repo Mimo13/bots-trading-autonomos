@@ -1,0 +1,15 @@
+{
+  "initial_balance": 100.0,
+  "initial_xrp": 0.0,
+  "symbol": "XRPUSDT",
+  "grid_min_price": 1.50,
+  "grid_max_price": 4.00,
+  "grid_levels": 10,
+  "risk_per_trade_pct": 0.05,
+  "max_xrp_hold_pct": 0.90,
+  "rebalance_interval_hours": 6,
+  "tv_filter_enabled": false,
+  "tv_min_confidence": 0.40,
+  "ai_advisor_enabled": true,
+  "ai_advisor_interval_hours": 6
+}
