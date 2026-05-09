@@ -1,0 +1,20 @@
+{
+  "accounts": [
+    {"name": "BUNQ", "febrero": 7050.00, "abril": 6328.00, "interes": 2.0, "tipo": "semanal", "notas": "Dinero siempre disponible"},
+    {"name": "Papá (solo beneficios)", "febrero": -3500.00, "abril": -3500.00, "interes": null, "tipo": "", "notas": "solo beneficios"},
+    {"name": "Afranga 1", "febrero": 500.00, "abril": 500.00, "interes": 16.0, "tipo": "mensual", "notas": "18/7/2026"},
+    {"name": "Afranga 2", "febrero": 500.00, "abril": 500.00, "interes": 13.0, "tipo": "mensual", "notas": "15/8/2026"},
+    {"name": "Afranga 3", "febrero": 259.00, "abril": 759.84, "interes": 12.0, "tipo": "mensual", "notas": "5/2/2026"},
+    {"name": "Debitum", "febrero": 557.12, "abril": 587.41, "interes": 12.0, "tipo": "diario"},
+    {"name": "Macclear", "febrero": 545.00, "abril": 613.12, "interes": 14.6, "tipo": "mensual"},
+    {"name": "Mintos", "febrero": 1431.23, "abril": 1449.59, "interes": 10.0, "tipo": "variado"},
+    {"name": "Income", "febrero": 500.00, "abril": 509.25, "interes": 16.9, "tipo": "variado"},
+    {"name": "Bondora", "febrero": 505.16, "abril": 511.00, "interes": 6.0, "tipo": "diario", "notas": "Dinero siempre disponible"},
+    {"name": "ViaInvest", "febrero": 500.00, "abril": 509.15, "interes": null, "tipo": "variado"}
+  ],
+  "cold_wallet": [
+    {"asset": "XRP", "qty": 652.938679},
+    {"asset": "XLM", "qty": 427.5868569, "name": "Stellar"},
+    {"asset": "XDC", "qty": 36.65, "name": "XDC Network"}
+  ]
+}

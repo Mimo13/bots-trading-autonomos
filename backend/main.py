@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import os, subprocess, csv
+import os, subprocess, csv, json
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -446,6 +446,35 @@ def binance_personal_portfolio():
         return {'ok':True,'total_usd':total,'items':items,'updated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}
     except Exception as e:
         return {'ok':False,'error':str(e),'total_usd':0,'items':[]}
+
+@app.get('/api/personal-portfolio')
+def personal_portfolio():
+    cfg_path = ROOT / 'personal_portfolio_config.json'
+    if not cfg_path.exists():
+        return {'ok':False,'error':'config not found','accounts':[],'cold_wallet':{'items':[],'total':0}}
+    cfg = json.loads(cfg_path.read_text())
+    accounts = cfg.get('accounts', [])
+    cold = cfg.get('cold_wallet', [])
+    total_feb = sum(a.get('febrero', 0) for a in accounts)
+    total_abr = sum(a.get('abril', 0) for a in accounts)
+    cold_items, cold_total = [], 0.0
+    for c in cold:
+        qty = float(c.get('qty', 0))
+        asset = c.get('asset', '')
+        name = c.get('name', asset)
+        price, change_24h = None, None
+        try:
+            from binance_client import load_client
+            t = load_client(testnet=False).get_ticker(f"{asset}USDT")
+            price = float(t.get('lastPrice', 0))
+            change_24h = float(t.get('priceChangePercent', 0))
+        except Exception:
+            pass
+        usd_value = qty * price if price else None
+        if usd_value:
+            cold_total += usd_value
+        cold_items.append({'asset':asset,'name':name,'qty':round(qty,4),'price':price,'usd_value':round(usd_value,2) if usd_value else None,'change_24h':change_24h})
+    return {'ok':True,'accounts':accounts,'totals':{'febrero':round(total_feb,2),'abril':round(total_abr,2),'change':round(total_abr-total_feb,2),'change_pct':round((total_abr/max(1,total_feb)-1)*100,1)},'cold_wallet':{'items':cold_items,'total':round(cold_total,2)},'updated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}
 
 @app.get('/api/health')
 def health():
