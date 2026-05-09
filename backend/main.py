@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import os, subprocess, csv, json
+import os, subprocess, csv, json, urllib.request, urllib.error
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -463,6 +463,7 @@ def personal_portfolio():
         asset = c.get('asset', '')
         name = c.get('name', asset)
         price, change_24h = None, None
+        # Try Binance first
         try:
             from binance_client import load_client
             t = load_client(testnet=False).get_ticker(f"{asset}USDT")
@@ -470,6 +471,17 @@ def personal_portfolio():
             change_24h = float(t.get('priceChangePercent', 0))
         except Exception:
             pass
+        # Fallback to MEXC public API
+        if price is None:
+            try:
+                req = urllib.request.Request(f'https://api.mexc.com/api/v3/ticker/24hr?symbol={asset}USDT',
+                    headers={'Accept': 'application/json','User-Agent':'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    t = json.loads(resp.read().decode('utf-8'))
+                    price = float(t.get('lastPrice', 0))
+                    change_24h = float(t.get('priceChangePercent', 0))
+            except Exception:
+                pass
         usd_value = qty * price if price else None
         if usd_value:
             cold_total += usd_value
