@@ -57,6 +57,17 @@ def gather_market_data() -> dict:
     data = {'sources_available': {}, 'sources_missing': []}
     ts = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
+    # LunarCrush (social sentiment, requiere API key gratuita)
+    try:
+        from data_sources.lunarcrush_feed import fetch_social_sentiment
+        lc = fetch_social_sentiment()
+        if lc:
+            data['lunarcrush'] = lc
+            data['sources_available']['lunarcrush'] = True
+    except Exception as e:
+        logger.warning(f'LunarCrush failed: {e}')
+        data['sources_available']['lunarcrush'] = False
+
     # Free sources (siempre disponibles, sin API key)
     try:
         from data_sources.free_sources import fetch_all_free
