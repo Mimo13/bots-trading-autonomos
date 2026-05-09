@@ -1,9 +1,14 @@
 // --------------------------------------------------------------------------------
-// FabianStructurePullbackBot — cTrader cBot
+// FabianStructurePullbackBot v2 — cTrader cBot
 // Estrategia: estructura de mercado → ruptura fuerte → pullback → entrada
 //
-// Traducción del Python fabian_pullback_bot.py a C# para cTrader.
-// Parámetros configurables desde la UI de cTrader.
+// Versión mejorada con parámetros agresivos validados en paper:
+//   - SwingLookback=1, StructureBars=40, ForceBody=1.0
+//   - EntryMode=1 (conservative edge), slBufferPips=0.1
+//   - Risk 3%, MaxTrades 8/día, MinRR 1.0
+//   - Trailing + break even desde 1R
+//
+// Basado en fabian_pullback_bot.py (Python) — mantener sincronizado.
 // --------------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
@@ -17,44 +22,53 @@ namespace cAlgo.Robots
     public class FabianStructurePullbackBot : Robot
     {
         // ========================================================================
-        // PARÁMETROS EDITABLES DESDE LA UI
+        // PARÁMETROS EDITABLES DESDE LA UI DE cTRADER
         // ========================================================================
 
         [Parameter("Volume (lots)", Group = "Gestión de Riesgo", DefaultValue = 0.01)]
         public double VolumeLots { get; set; } = 0.01;
 
-        [Parameter("Risk Percent", Group = "Gestión de Riesgo", DefaultValue = 2.0)]
-        public double RiskPercent { get; set; } = 2.0;
+        [Parameter("Risk Percent", Group = "Gestión de Riesgo", DefaultValue = 3.0)]
+        public double RiskPercent { get; set; } = 3.0;
 
         [Parameter("Use Risk% Sizing", Group = "Gestión de Riesgo", DefaultValue = true)]
         public bool UseRiskSizing { get; set; } = true;
 
-        [Parameter("Max Trades Per Day", Group = "Gestión de Riesgo", DefaultValue = 4)]
-        public int MaxTradesPerDay { get; set; } = 4;
+        [Parameter("Max Trades Per Day", Group = "Gestión de Riesgo", DefaultValue = 8)]
+        public int MaxTradesPerDay { get; set; } = 8;
 
-        [Parameter("Max Trades Per Session", Group = "Gestión de Riesgo", DefaultValue = 2)]
-        public int MaxTradesPerSession { get; set; } = 2;
+        [Parameter("Max Trades Per Session", Group = "Gestión de Riesgo", DefaultValue = 4)]
+        public int MaxTradesPerSession { get; set; } = 4;
 
-        [Parameter("Min RR", Group = "Gestión de Riesgo", DefaultValue = 1.2)]
-        public double MinRR { get; set; } = 1.2;
+        [Parameter("Min RR", Group = "Gestión de Riesgo", DefaultValue = 1.0)]
+        public double MinRR { get; set; } = 1.0;
 
-        [Parameter("Max Daily Loss %", Group = "Gestión de Riesgo", DefaultValue = 5.0)]
-        public double MaxDailyLossPercent { get; set; } = 5.0;
+        [Parameter("Max Daily Loss %", Group = "Gestión de Riesgo", DefaultValue = 10.0)]
+        public double MaxDailyLossPercent { get; set; } = 10.0;
 
-        [Parameter("Swing Lookback (barras)", Group = "Estructura", DefaultValue = 3)]
-        public int SwingLookback { get; set; } = 3;
+        [Parameter("SL Buffer (pips)", Group = "Gestión de Riesgo", DefaultValue = 0.1)]
+        public double SlBufferPips { get; set; } = 0.1;
 
-        [Parameter("Structure Bars (lookback)", Group = "Estructura", DefaultValue = 100)]
-        public int StructureBars { get; set; } = 100;
+        [Parameter("Swing Lookback (barras)", Group = "Estructura", DefaultValue = 1)]
+        public int SwingLookback { get; set; } = 1;
 
-        [Parameter("Body Avg Period", Group = "Estructura", DefaultValue = 20)]
-        public int BodyAvgPeriod { get; set; } = 20;
+        [Parameter("Structure Bars (lookback)", Group = "Estructura", DefaultValue = 40)]
+        public int StructureBars { get; set; } = 40;
 
-        [Parameter("Force Body Multiplier", Group = "Ruptura", DefaultValue = 1.5)]
-        public double ForceBodyMultiplier { get; set; } = 1.5;
+        [Parameter("Body Avg Period", Group = "Estructura", DefaultValue = 10)]
+        public int BodyAvgPeriod { get; set; } = 10;
 
-        [Parameter("Max Wick/Body Ratio", Group = "Ruptura", DefaultValue = 1.0)]
-        public double MaxWickToBodyRatio { get; set; } = 1.0;
+        [Parameter("Force Body Multiplier", Group = "Ruptura", DefaultValue = 1.0)]
+        public double ForceBodyMultiplier { get; set; } = 1.0;
+
+        [Parameter("Max Wick/Body Ratio", Group = "Ruptura", DefaultValue = 3.0)]
+        public double MaxWickToBodyRatio { get; set; } = 3.0;
+
+        [Parameter("Entry Mode", Group = "Entrada", DefaultValue = 1)]
+        public int EntryMode { get; set; } = 1; // 0=midpoint, 1=conservative_edge
+
+        [Parameter("Pending Order Expiry (bars)", Group = "Entrada", DefaultValue = 12)]
+        public int PendingOrderExpiry { get; set; } = 12; // ~12 barras 5m = 60min
 
         [Parameter("Enable Trailing", Group = "Gestión de Salida", DefaultValue = true)]
         public bool EnableTrailing { get; set; } = true;
@@ -64,6 +78,9 @@ namespace cAlgo.Robots
 
         [Parameter("Crypto Mode (24/7)", Group = "Sesiones", DefaultValue = true)]
         public bool CryptoMode { get; set; } = true;
+
+        [Parameter("Avoid First Minutes", Group = "Sesiones", DefaultValue = 0)]
+        public int AvoidFirstSessionMinutes { get; set; } = 0;
 
         // ========================================================================
         // VARIABLES INTERNAS
@@ -79,6 +96,7 @@ namespace cAlgo.Robots
         private int _totalWins, _totalLosses, _totalTrades;
         private double _currentBodyAvg;
         private int _lastResetDay = -1;
+        private readonly Dictionary<string, int> _orderEntryBars = new Dictionary<string, int>();
 
         // ========================================================================
         // ON START
@@ -88,8 +106,12 @@ namespace cAlgo.Robots
         {
             _peakBalance = Account.Equity;
             _dailyStartEquity = Account.Equity;
-            Print($"FabianPullback iniciado | Risk {RiskPercent}% | RR {MinRR} | Vol {VolumeLots} lots");
-            Print($"CryptoMode={CryptoMode} | SwingBack={SwingLookback} | ForceBody={ForceBodyMultiplier}");
+
+            Print("=== FabianPullback v2 (config agresiva) ===");
+            Print($"Risk {RiskPercent}% | RR {MinRR} | SL buf {SlBufferPips}p | MaxD {MaxTradesPerDay}/día");
+            Print($"Swing={SwingLookback} | StructB={StructureBars} | BodyAvg={BodyAvgPeriod}");
+            Print($"ForceBody={ForceBodyMultiplier} | WickRatio={MaxWickToBodyRatio}");
+            Print($"EntryMode={EntryMode} | Crypto={CryptoMode} | Trailing={EnableTrailing}");
         }
 
         // ========================================================================
@@ -100,29 +122,32 @@ namespace cAlgo.Robots
         {
             int idx = Bars.Count - 1;
             if (idx < BodyAvgPeriod + SwingLookback * 2)
-                return; // Calentamiento insuficiente
+                return; // Calentamiento inicial
 
-            // 1. Calcular tamaño medio de cuerpo
+            // 1. Limpiar órdenes expiradas
+            CleanExpiredOrders(idx);
+
+            // 2. Calcular tamaño medio de cuerpo
             ComputeBodyAverage(idx);
 
-            // 2. Reset diario si cambia el día
+            // 3. Reset diario si cambia el día
             ResetDailyIfNeeded(idx);
 
-            // 3. Pausa por racha de pérdidas
+            // 4. Pausa por racha de pérdidas
             if (_pauseUntilBar > idx)
                 return;
 
-            // 4. Límites diarios
+            // 5. Límites diarios
             if (!CanTrade(idx))
                 return;
 
-            // 5. Swing highs / lows
+            // 6. Swing highs / lows (con lookback=1 detecta más señales)
             var swingHighs = FindSwingHighs(idx);
             var swingLows = FindSwingLows(idx);
             if (swingHighs.Count < 2 || swingLows.Count < 2)
                 return;
 
-            // 6. Estructura de mercado
+            // 7. Estructura de mercado
             string structure;
             double lastHigh, lastLow;
             DetectMarketStructure(swingHighs, swingLows, idx,
@@ -130,7 +155,7 @@ namespace cAlgo.Robots
             if (structure == "RANGE")
                 return;
 
-            // 7. Ruptura fuerte
+            // 8. Ruptura fuerte
             var bar = Bars.Last(1);
             double body = Math.Abs(bar.Close - bar.Open);
             double wick = bar.High - bar.Low;
@@ -141,11 +166,11 @@ namespace cAlgo.Robots
             if (wickBodyRatio > MaxWickToBodyRatio)
                 return;
 
-            // 8. Ejecutar según estructura
+            // 9. Ejecutar según estructura detectada
             if (structure == "BULLISH" && bar.High > lastHigh && bar.Close > lastHigh)
-                TryPlaceBuyStop(idx, bar, lastHigh);
+                TryPlaceBuyStop(idx, bar, structure, lastHigh);
             else if (structure == "BEARISH" && bar.Low < lastLow && bar.Close < lastLow)
-                TryPlaceSellStop(idx, bar, lastLow);
+                TryPlaceSellStop(idx, bar, structure, lastLow);
         }
 
         // ========================================================================
@@ -172,6 +197,7 @@ namespace cAlgo.Robots
                 _dailyStartEquity = Account.Equity;
                 _dailyPnl = 0;
                 _lastResetDay = currentDay;
+                Print($"Reset diario. Equity={_dailyStartEquity:F2}");
             }
         }
 
@@ -192,7 +218,10 @@ namespace cAlgo.Robots
             {
                 double lossPct = (_dailyPnl / _dailyStartEquity) * 100;
                 if (lossPct <= -Math.Abs(MaxDailyLossPercent))
+                {
+                    Print($"Daily loss limit reached: {lossPct:F1}% (max {MaxDailyLossPercent}%)");
                     return false;
+                }
             }
             return true;
         }
@@ -202,9 +231,28 @@ namespace cAlgo.Robots
             if (CryptoMode) return "CRYPTO";
             var dt = Bars.Last(1).OpenTime;
             int mins = dt.Hour * 60 + dt.Minute;
-            if (mins >= 420 && mins < 720) return "LONDON";
-            if (mins >= 810 && mins < 1200) return "NY";
+            int avoid = AvoidFirstSessionMinutes;
+            if (mins >= 420 + avoid && mins < 720) return "LONDON";
+            if (mins >= 810 + avoid && mins < 1200) return "NY";
             return "NONE";
+        }
+
+        private void CleanExpiredOrders(int currentBar)
+        {
+            var toRemove = new List<string>();
+            foreach (var kvp in _orderEntryBars)
+            {
+                if (currentBar - kvp.Value > PendingOrderExpiry)
+                {
+                    // Cancelar orden pendiente (si aún existe)
+                    var pending = PendingOrders.FirstOrDefault(o => o.Label == kvp.Key);
+                    if (pending != null)
+                        CancelPendingOrder(pending);
+                    toRemove.Add(kvp.Key);
+                }
+            }
+            foreach (var key in toRemove)
+                _orderEntryBars.Remove(key);
         }
 
         // ========================================================================
@@ -290,17 +338,61 @@ namespace cAlgo.Robots
         }
 
         // ========================================================================
+        // ZONA DE ENTRADA (soporta EntryMode 0 y 1)
+        // ========================================================================
+
+        private bool FindEntryZone(string structure, Bar breakoutBar, Bar prevBar,
+            out double entryPrice, out double zoneEdge)
+        {
+            entryPrice = 0;
+            zoneEdge = 0;
+
+            if (structure == "BULLISH")
+            {
+                double zoneHigh = Math.Min(breakoutBar.Close, breakoutBar.High);
+                double zoneLow = Math.Max(breakoutBar.Open, prevBar.Close);
+
+                if (zoneHigh <= zoneLow) return false;
+
+                if (EntryMode == 1) // conservative_edge: entrar cerca del borde superior
+                    entryPrice = zoneHigh - (zoneHigh - zoneLow) * 0.2;
+                else // midpoint (0)
+                    entryPrice = zoneHigh - (zoneHigh - zoneLow) * 0.5;
+
+                zoneEdge = zoneLow;
+                return true;
+            }
+            else // BEARISH
+            {
+                double zoneLow = Math.Max(breakoutBar.Low, breakoutBar.Close);
+                double zoneHigh = Math.Min(breakoutBar.Open, prevBar.Close);
+
+                if (zoneHigh <= zoneLow) return false;
+
+                if (EntryMode == 1) // conservative_edge: entrar cerca del borde inferior
+                    entryPrice = zoneLow + (zoneHigh - zoneLow) * 0.2;
+                else // midpoint (0)
+                    entryPrice = zoneLow + (zoneHigh - zoneLow) * 0.5;
+
+                zoneEdge = zoneHigh;
+                return true;
+            }
+        }
+
+        // ========================================================================
         // EJECUCIÓN DE ÓRDENES
         // ========================================================================
 
-        private void TryPlaceBuyStop(int idx, Bar bar, double structuralHigh)
+        private void TryPlaceBuyStop(int idx, Bar bar, string structure, double structuralHigh)
         {
-            double zoneHigh = Math.Min(bar.Close, bar.High);
-            double zoneLow = Math.Max(bar.Open, Bars[idx - 1].Close);
-            double entry = zoneHigh - (zoneHigh - zoneLow) * 0.5;
+            Bar prevBar = Bars[idx - 1];
+            double entry, zoneEdge;
+            if (!FindEntryZone("BULLISH", bar, prevBar, out entry, out zoneEdge))
+                return;
+
             if (entry <= 0) return;
 
-            double slPrice = structuralHigh - Symbol.PipSize * 0.5;
+            double slPrice = structuralHigh - Symbol.PipSize * SlBufferPips;
             double riskPrice = Math.Abs(entry - slPrice);
             if (riskPrice <= 0) return;
 
@@ -311,35 +403,36 @@ namespace cAlgo.Robots
             long volume = CalculateVolume(riskPrice);
             if (volume <= 0) return;
 
-            // stopPips = distancia desde mercado actual hasta el trigger en pips
             double stopPips = (entry - Symbol.Bid) / Symbol.PipSize;
             double slPips = riskPrice / Symbol.PipSize;
             double tpPips = (tpPrice - entry) / Symbol.PipSize;
 
             string label = "FABIAN_BUY_" + idx;
-            // cTrader: (TradeType, Symbol, volume, stopPips, label, slPips, tpPips)
             var result = PlaceStopOrder(TradeType.Buy, Symbol, volume, stopPips, label, slPips, tpPips);
 
             if (result.IsSuccessful)
             {
                 _tradesToday++;
+                _orderEntryBars[label] = idx;
                 string s = GetSession();
                 if (s == "LONDON") _tradesLondon++;
                 if (s == "NY") _tradesNY++;
-                Print($"BUY STOP | Trigger={entry:F5} SL={slPrice:F5} TP={tpPrice:F5} RR={rr:F2}");
+                Print($"BUY STOP | Entry={entry:F5} SL={slPrice:F5} TP={tpPrice:F5} RR={rr:F2} Vol={volume}");
             }
             else
                 Print($"Error BuyStop: {result.Error}");
         }
 
-        private void TryPlaceSellStop(int idx, Bar bar, double structuralLow)
+        private void TryPlaceSellStop(int idx, Bar bar, string structure, double structuralLow)
         {
-            double zoneLow = Math.Max(bar.Low, bar.Close);
-            double zoneHigh = Math.Min(bar.Open, Bars[idx - 1].Close);
-            double entry = zoneLow + (zoneHigh - zoneLow) * 0.5;
+            Bar prevBar = Bars[idx - 1];
+            double entry, zoneEdge;
+            if (!FindEntryZone("BEARISH", bar, prevBar, out entry, out zoneEdge))
+                return;
+
             if (entry <= 0) return;
 
-            double slPrice = structuralLow + Symbol.PipSize * 0.5;
+            double slPrice = structuralLow + Symbol.PipSize * SlBufferPips;
             double riskPrice = Math.Abs(slPrice - entry);
             if (riskPrice <= 0) return;
 
@@ -350,21 +443,21 @@ namespace cAlgo.Robots
             long volume = CalculateVolume(riskPrice);
             if (volume <= 0) return;
 
-            double stopPips = (entry - Symbol.Ask) / Symbol.PipSize; // negativo = por debajo
+            double stopPips = (entry - Symbol.Ask) / Symbol.PipSize;
             double slPips = riskPrice / Symbol.PipSize;
             double tpPips = (entry - tpPrice) / Symbol.PipSize;
 
             string label = "FABIAN_SELL_" + idx;
-            // cTrader: (TradeType, Symbol, volume, stopPips, label, slPips, tpPips)
             var result = PlaceStopOrder(TradeType.Sell, Symbol, volume, stopPips, label, slPips, tpPips);
 
             if (result.IsSuccessful)
             {
                 _tradesToday++;
+                _orderEntryBars[label] = idx;
                 string s = GetSession();
                 if (s == "LONDON") _tradesLondon++;
                 if (s == "NY") _tradesNY++;
-                Print($"SELL STOP | Trigger={entry:F5} SL={slPrice:F5} TP={tpPrice:F5} RR={rr:F2}");
+                Print($"SELL STOP | Entry={entry:F5} SL={slPrice:F5} TP={tpPrice:F5} RR={rr:F2} Vol={volume}");
             }
             else
                 Print($"Error SellStop: {result.Error}");
@@ -396,7 +489,7 @@ namespace cAlgo.Robots
         protected override void OnPositionOpened(Position position)
         {
             if (position.Label.StartsWith("FABIAN"))
-                Print($"Abierta: {position.TradeType} VolInUnits={position.VolumeInUnits} @ {position.EntryPrice}");
+                Print($"Abierta: {position.TradeType} Vol={position.VolumeInUnits} @ {position.EntryPrice}");
         }
 
         protected override void OnPositionClosed(Position position)
@@ -419,6 +512,7 @@ namespace cAlgo.Robots
             }
             _totalTrades++;
 
+            // Hard kill: 3 pérdidas consecutivas → pausa 24 barras (~2h en 5m)
             if (_consecutiveLosses >= 3)
             {
                 _pauseUntilBar = Bars.Count + 24;
@@ -430,7 +524,10 @@ namespace cAlgo.Robots
         }
 #pragma warning restore CS0672
 
-        // Trailing Stop
+        // ========================================================================
+        // TRAILING STOP + BREAK EVEN
+        // ========================================================================
+
         protected override void OnTick()
         {
             if (!EnableTrailing) return;
@@ -442,14 +539,14 @@ namespace cAlgo.Robots
                     double riskPips = Math.Abs(pos.EntryPrice - (pos.StopLoss ?? 0)) / Symbol.PipSize;
                     if (riskPips <= 0) continue;
 
-                    // Break even at 1R
+                    // Break even at 1R — mover SL al entry una vez alcanzado 1R
                     if (pos.Pips >= riskPips && EnableBreakEvenAt1R && pos.StopLoss != pos.EntryPrice)
                     {
                         ModifyPosition(pos, pos.EntryPrice, pos.TakeProfit, ProtectionType.None);
-                        Print($"Break-even {pos.Id}");
+                        Print($"BE {pos.Id} @ {pos.Pips:F1}pips");
                     }
 
-                    // Trailing beyond 1.5R
+                    // Trailing más agresivo: mover SL cada 0.5R adicional
                     if (pos.Pips >= riskPips * 1.5)
                     {
                         double newSl = pos.EntryPrice + riskPips * 0.5 * Symbol.PipSize;
@@ -465,7 +562,7 @@ namespace cAlgo.Robots
                     if (pos.Pips >= riskPips && EnableBreakEvenAt1R && pos.StopLoss != pos.EntryPrice)
                     {
                         ModifyPosition(pos, pos.EntryPrice, pos.TakeProfit, ProtectionType.None);
-                        Print($"Break-even {pos.Id}");
+                        Print($"BE {pos.Id} @ {pos.Pips:F1}pips");
                     }
 
                     if (pos.Pips >= riskPips * 1.5)
@@ -479,16 +576,17 @@ namespace cAlgo.Robots
         }
 
         // ========================================================================
-        // ON STOP — resumen
+        // ON STOP — resumen final
         // ========================================================================
 
         protected override void OnStop()
         {
             double winRate = _totalTrades > 0 ? (double)_totalWins / _totalTrades * 100 : 0;
-            Print("=== RESUMEN FabianPullback ===");
+            Print("=== RESUMEN FabianPullback v2 ===");
             Print($"Trades: {_totalTrades} | Wins: {_totalWins} | Losses: {_totalLosses}");
             Print($"WinRate: {winRate:F1}%");
-            Print($"Balance: {Account.Equity:F2}");
+            Print($"Balance: {Account.Equity:F2} | Peak: {_peakBalance:F2}");
+            Print($"Drawdown: {(1 - Account.Equity / _peakBalance) * 100:F1}%");
         }
     }
 }
