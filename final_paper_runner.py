@@ -112,29 +112,29 @@ def run() -> dict:
     if tmp4.exists(): tmp4.unlink()
 
     # 5. TurtleBot — Donchian breakout + piramidación + múltiples activos
-    turtle_inputs = []
-    turtle_symbols = []
-    for sym in ['SOL', 'ADA']:
-        f = ROOT / f'runtime/live/{sym}USDT_5m.csv'
-        if f.exists():
-            turtle_inputs.append(str(f))
-            turtle_symbols.append(sym)
-    if turtle_inputs:
-        out5 = POLY_RUNS_DIR / f'turtle_{ts}'
-        cmd5 = [PYTHON, str(ROOT / 'turtle_bot.py'), '--input'] + turtle_inputs + \
-               ['--symbols'] + turtle_symbols + \
-               ['--config', str(TURTLE_CONFIG), '--output-dir', str(out5)]
-        cp5 = subprocess.run(cmd5, capture_output=True, text=True, timeout=90)
-        if cp5.returncode == 0:
-            status['turtle_simulated'] = True
-            status['notes'].append('turtle run ok')
-            try:
-                s5 = json.loads(cp5.stdout)
-                status['turtle_summary'] = s5
-            except Exception:
-                status['notes'].append('turtle parse failed')
-        else:
-            status['notes'].append(f'turtle failed: {cp5.stderr.strip()[:150]}')
+#     turtle_inputs = []
+#     turtle_symbols = []
+#     for sym in ['SOL', 'ADA']:
+#         f = ROOT / f'runtime/live/{sym}USDT_5m.csv'
+#         if f.exists():
+#             turtle_inputs.append(str(f))
+#             turtle_symbols.append(sym)
+#     if turtle_inputs:
+#         out5 = POLY_RUNS_DIR / f'turtle_{ts}'
+#         cmd5 = [PYTHON, str(ROOT / 'turtle_bot.py'), '--input'] + turtle_inputs + \
+#                ['--symbols'] + turtle_symbols + \
+#                ['--config', str(TURTLE_CONFIG), '--output-dir', str(out5)]
+#         cp5 = subprocess.run(cmd5, capture_output=True, text=True, timeout=90)
+#         if cp5.returncode == 0:
+#             status['turtle_simulated'] = True
+#             status['notes'].append('turtle run ok')
+#             try:
+#                 s5 = json.loads(cp5.stdout)
+#                 status['turtle_summary'] = s5
+#             except Exception:
+#                 status['notes'].append('turtle parse failed')
+#         else:
+#             status['notes'].append(f'turtle failed: {cp5.stderr.strip()[:150]}')
 
     # 6. XRP Grid Bot — cuadrícula dinámica asistida por IA
     xrp_feed = ROOT / 'runtime/live/XRPUSDT_5m.csv'

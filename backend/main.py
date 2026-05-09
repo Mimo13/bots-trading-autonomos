@@ -20,7 +20,7 @@ BOT_META = {
     'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
     'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet', 'ai': True},
     'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet', 'ai': True},
-    'turtle': {'label': 'TurtleBot', 'short': 'Turtle', 'order': 40, 'family': 'crypto'},
+    'tv_sol': {'label': 'TV Signal SOL', 'short': 'TV-SOL', 'order': 41, 'family': 'crypto'},
     'mtfreg': {'label': 'MTF Regime Bot', 'short': 'MTFReg', 'order': 45, 'family': 'crypto'},
     'boxbr': {'label': 'Box Breakout Bot', 'short': 'BoxBr', 'order': 46, 'family': 'crypto'},
     'scalp': {'label': 'Scalping 5m Bot', 'short': 'Scalp5m', 'order': 47, 'family': 'crypto'},
@@ -156,7 +156,7 @@ def pnl_hourly(bot:str, hours:int=24):
 def _latency_checks():
     return [
       ('cTrader signal', [ROOT/'runtime/tradingview/ctrader_signal.csv'], 6*60),
-      ('Poly status', [ROOT/'runtime/polymarket/last_runner_status.json'], 130*60),
+      ('Runner status', [ROOT/'runtime/polymarket/last_runner_status.json'], 130*60),
       ('watchdog log', [ROOT/'runtime/logs/watchdog.log', Path('/Users/mimo13/.bta-run/logs/watchdog_runtime.log')], 5*60),
       ('supervisor log', [ROOT/'runtime/logs/supervisor_cycle.log', Path('/Users/mimo13/.bta-run/logs/supervisor_runtime.log')], 130*60),
     ]
@@ -336,12 +336,10 @@ def _run_pfolio(cfg_path: str = ''):
 
 @app.post('/api/bots/{bot}/start')
 def start(bot:str):
-    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','pfolio':'pfolio','turtle':'turtle'}.get(bot)
+    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','pfolio':'pfolio','tv_sol':'tv_sol'}.get(bot)
     if bot=='fabian':
         subprocess.run(['open','-ga','/Applications/cTrader.app'])
         subprocess.Popen([str(ROOT/'run_bridge_cycle.sh')], cwd=ROOT)
-    elif bot=='poly':
-        subprocess.Popen([str(ROOT/'run_supervisor_cycle.sh')], cwd=ROOT)
     elif bot=='pfolio':
         _run_pfolio()
     # Mark as running in DB immediately
@@ -365,8 +363,8 @@ def stop(bot:str):
     elif bot=='pfolio':
         subprocess.run(['pkill','-f','polymarket_portfolio_bot'])
     db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro',
-               'poly':'poly','pfolio':'pfolio','turtle':'turtle',
-               'fabian_live_pullback':'fabian_live_pullback','fabian_live_pro':'fabian_live_pro'}.get(bot)
+               'poly':'poly','pfolio':'pfolio','tv_sol':'tv_sol',
+               'fabian_live_pullback':'fabian_live_pullback','fabian_live_pro':'fabian_live_pro','tv_sol':'tv_sol'}.get(bot)
     if db_name:
         try:
             with psycopg.connect(DB_URL) as c:

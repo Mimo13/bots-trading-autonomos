@@ -1,5 +1,5 @@
 {
-  "ts": "2026-05-09T13:30:41.982018Z",
+  "ts": "2026-05-09T16:42:40.252713Z",
   "market_data": {
     "sources_available": {
       "binance_futures": true,
@@ -9,7 +9,7 @@
       "tradingview": true
     },
     "sources_missing": [],
-    "xrp_price": 1.4183628011803366
+    "xrp_price": 1.4172685919368384
   },
   "grid": {
     "grid_min_price": 0.85,

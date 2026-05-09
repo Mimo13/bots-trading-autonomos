@@ -385,8 +385,8 @@ def main():
         load_pfolio(conn)
         load_fabian_py(conn)
         load_fabianpro(conn)
-        load_generic_run_bot(conn, 'turtle', 'turtle')
         load_generic_run_bot(conn, 'xrp_grid', 'xrp_grid')
+        load_generic_run_bot(conn, 'tv_sol', 'tv_')
 
 
 if __name__ == '__main__':

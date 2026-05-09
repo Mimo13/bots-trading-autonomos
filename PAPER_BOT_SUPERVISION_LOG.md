@@ -357,3 +357,25 @@
 - cTrader signal CSV: ✅ exists (age_s=4)
 - Obsidian trading note: ✅ exists (age_s=4)
 
+## Supervisión 2026-05-09T13:55:08.645762Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed | xrp_grid run ok | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-09T15:55:09.501406Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed | xrp_grid run ok | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+

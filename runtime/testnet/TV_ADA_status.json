@@ -1,0 +1,22 @@
+{
+  "ts": "2026-05-09T16:42:50.021728Z",
+  "symbol": "ADA",
+  "balance": 100.0,
+  "trades": 0,
+  "wins": 0,
+  "losses": 0,
+  "position": {
+    "side": "BUY",
+    "entry": 0.2733,
+    "qty": 10.976948408342482,
+    "usd": 3.0,
+    "sl": 0.27285,
+    "tp": 0.27397499999999997
+  },
+  "signal": {
+    "ts": "2026-05-09T16:42:40.010353Z",
+    "symbol": "EURUSD",
+    "recommendation": "BUY",
+    "confidence": 0.4615
+  }
+}

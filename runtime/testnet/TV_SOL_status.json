@@ -1,0 +1,22 @@
+{
+  "ts": "2026-05-09T16:42:50.108162Z",
+  "symbol": "SOL",
+  "balance": 100.0,
+  "trades": 0,
+  "wins": 0,
+  "losses": 0,
+  "position": {
+    "side": "BUY",
+    "entry": 93.38,
+    "qty": 0.03212679374598415,
+    "usd": 3.0,
+    "sl": 93.25142857142856,
+    "tp": 93.57285714285713
+  },
+  "signal": {
+    "ts": "2026-05-09T16:42:40.010353Z",
+    "symbol": "EURUSD",
+    "recommendation": "BUY",
+    "confidence": 0.4615
+  }
+}
