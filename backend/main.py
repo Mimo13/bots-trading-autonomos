@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import psycopg
 
-ROOT=Path('/Volumes/Almacen/Desarrollo/bots-trading-autonomos')
+ROOT=Path('/Users/mimo13/bots-trading-autonomos-runtime')
 DB_URL=os.getenv('DATABASE_URL','postgresql:///bots_dashboard')
 app=FastAPI(title='Bots Trading Dashboard')
 app.mount('/static', StaticFiles(directory=str(ROOT/'frontend')), name='static')
@@ -18,15 +18,15 @@ BOT_META = {
     'fabian': {'label': 'FabiánPullback', 'short': 'Fabián cTrader', 'order': 10, 'family': 'forex'},
     'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', 'order': 20, 'family': 'crypto'},
     'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
-    'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet'},
-    'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet'},
+    'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet', 'ai': True},
+    'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet', 'ai': True},
     'turtle': {'label': 'TurtleBot', 'short': 'Turtle', 'order': 40, 'family': 'crypto'},
     'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket'},
     'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'polymarket'},
 }
 
 def _meta(bot: str):
-    base = {'label': bot, 'short': bot, 'order': 999, 'family': 'paper'}
+    base = {'label': bot, 'short': bot, 'order': 999, 'family': 'paper', 'ai': False}
     base.update(BOT_META.get(bot, {}))
     return base
 
