@@ -292,13 +292,28 @@ def weekly_compare():
              coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
+        and bot_name <> 'poly'
       group by bot_name
-      order by pnl_week desc
     ''')
-    items=[]
+
+    agg={}
     for r in rows:
-        m=_meta(r[0])
-        items.append({'bot_name':r[0], 'label':m['label'], 'short':m['short'], 'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])})
+        agg[r[0]]={'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])}
+
+    # Include all bots from BOT_META except poly, and those in bot_status
+    bots_rows=q("select bot_name from bot_status where bot_name <> 'poly' order by bot_name")
+    bot_names=[r[0] for r in bots_rows]
+    for b in BOT_META.keys():
+        if b != 'poly' and b not in bot_names:
+            bot_names.append(b)
+
+    items=[]
+    for b in bot_names:
+        m=_meta(b)
+        a=agg.get(b, {'pnl_week':0,'trades':0,'win_rate':0})
+        items.append({'bot_name':b, 'label':m['label'], 'short':m['short'], 'pnl_week':a['pnl_week'],'trades':a['trades'],'win_rate':a['win_rate']})
+
+    items.sort(key=lambda x: (x.get('order', _meta(x['bot_name']).get('order',999))))
     return {'items':items}
 
 def _run_pfolio(cfg_path: str = ''):
@@ -391,6 +406,41 @@ def ai_advisor_stats():
         'reject_rate': round(rejected / max(1, total) * 100, 1),
         'last_10': last_10[::-1],
     }
+
+@app.get('/api/binance/personal-portfolio')
+def binance_personal_portfolio():
+    try:
+        from binance_client import load_client
+        client = load_client(testnet=False)
+        balances = client.get_balance()
+
+        items=[]
+        total=0.0
+        for b in balances:
+            asset=b.get('asset')
+            free=float(b.get('free') or 0)
+            locked=float(b.get('locked') or 0)
+            qty=free+locked
+            if qty<=0:
+                continue
+            usd_value=None
+            quote_asset = asset[2:] if asset.startswith('LD') and len(asset) > 2 else asset
+            if quote_asset == 'USDT':
+                usd_value=qty
+            else:
+                try:
+                    t=client.get_ticker(f"{quote_asset}USDT")
+                    usd_value=qty*float(t.get('lastPrice') or 0)
+                except Exception:
+                    usd_value=None
+            if usd_value is not None:
+                total += usd_value
+            items.append({'asset':asset,'free':free,'locked':locked,'qty':qty,'usd_value':usd_value})
+
+        items.sort(key=lambda x: (x.get('usd_value') is None, -(x.get('usd_value') or 0)))
+        return {'ok':True,'total_usd':total,'items':items,'updated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}
+    except Exception as e:
+        return {'ok':False,'error':str(e),'total_usd':0,'items':[]}
 
 @app.get('/api/health')
 def health():

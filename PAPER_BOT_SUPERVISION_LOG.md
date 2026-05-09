@@ -339,3 +339,14 @@
 - cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
+## Supervisión 2026-05-09T09:55:02.733814Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
