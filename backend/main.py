@@ -476,6 +476,19 @@ def personal_portfolio():
         cold_items.append({'asset':asset,'name':name,'qty':round(qty,4),'price':price,'usd_value':round(usd_value,2) if usd_value else None,'change_24h':change_24h})
     return {'ok':True,'accounts':accounts,'totals':{'febrero':round(total_feb,2),'abril':round(total_abr,2),'change':round(total_abr-total_feb,2),'change_pct':round((total_abr/max(1,total_feb)-1)*100,1)},'cold_wallet':{'items':cold_items,'total':round(cold_total,2)},'updated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}
 
+@app.post('/api/personal-portfolio/save')
+def personal_portfolio_save(data: dict):
+    cfg_path = ROOT / 'personal_portfolio_config.json'
+    if not cfg_path.exists():
+        return {'ok':False}
+    current = json.loads(cfg_path.read_text())
+    if 'accounts' in data:
+        current['accounts'] = data['accounts']
+    if 'cold_wallet' in data:
+        current['cold_wallet'] = data['cold_wallet']
+    cfg_path.write_text(json.dumps(current, indent=2, ensure_ascii=False))
+    return {'ok':True}
+
 @app.get('/api/health')
 def health():
     return {'ok':True}
