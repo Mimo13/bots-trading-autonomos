@@ -1,0 +1,34 @@
+{
+  "initial_balance": 100.0,
+  "final_balance": 100.0,
+  "total_pnl": 0.0,
+  "total_trades": 0,
+  "wins": 0,
+  "losses": 0,
+  "win_rate_percent": 0,
+  "max_drawdown_percent": 0.0,
+  "config": {
+    "initial_balance": 100.0,
+    "risk_per_trade": 0.02,
+    "donchian_period": 10,
+    "atr_period": 14,
+    "atr_stop_multiplier": 1.5,
+    "pyramid_levels": 3,
+    "pyramid_increment_pct": 0.5,
+    "pyramid_unit_size_pct": 0.5,
+    "max_risk_per_position": 0.03,
+    "max_positions": 4,
+    "max_daily_loss_pct": 10.0,
+    "max_trades_per_day": 10,
+    "enable_pyramiding": true,
+    "enable_trailing": true,
+    "trailing_start_atr": 1.0,
+    "exit_on_signal_reversal": false
+  },
+  "outputs": {
+    "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/turtle_20260508T195446Z/decisions_log.csv",
+    "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/turtle_20260508T195446Z/trades_log.csv",
+    "portfolio_snapshots": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/turtle_20260508T195446Z/portfolio_snapshots.csv",
+    "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/turtle_20260508T195446Z/summary.json"
+  }
+}

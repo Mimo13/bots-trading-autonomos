@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import json
 from tradingview_bridge import write_ctrader_signal, enrich_polymarket_csv
 
-ROOT = Path('/Volumes/Almacen/Desarrollo/bots-trading-autonomos')
+ROOT = Path('/Users/mimo13/bots-trading-autonomos-runtime')
 
 CTRADER_OUT = ROOT / 'runtime/tradingview/ctrader_signal.csv'
 POLY_BASE = ROOT / 'runtime/polymarket/polymarket_base_input.csv'

@@ -86,293 +86,7 @@
 - cTrader signal CSV: ✅ exists (age_s=197)
 - Obsidian trading note: ✅ exists (age_s=1092)
 
-## Supervisión 2026-05-06T21:31:24.853846Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-06T21:54:09.970178Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-06T23:54:10.728417Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T01:54:11.461285Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T03:54:12.178236Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T05:51:34.624090Z
-
-- Runner: ❌ ERROR
-  - stderr: Traceback (most recent call last):
-  File "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/final_paper_runner.py", line 89, in <module>
-    result = run()
-  File "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/final_paper_runner.py", line 29, in run
-    write_ctrader_signal(
-    ~~~~~~~~~~~~~~~~~~~~^
-        output_csv=CTRADER_SIGNAL,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ...<2 lines>...
-        interval='5m',
-        ^^^^^^^^^^^^^^
-    )
-    ^
-  File "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/tradingview_bridge.py", line 91, in write_ctrader_signal
-    signals = fetch_tv_signals([tv_exchange_symbol], screener=screener, interval=interval)
-  File "/Volumes/Almacen/Desarrollo/
-- cTrader signal CSV: ✅ exists (age_s=26)
-- Obsidian trading note: ✅ exists (age_s=5788)
-
-## Supervisión 2026-05-07T05:54:13.079175Z
-
-- Runner: ❌ ERROR
-  - stderr: Traceback (most recent call last):
-  File "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/final_paper_runner.py", line 89, in <module>
-    result = run()
-  File "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/final_paper_runner.py", line 29, in run
-    write_ctrader_signal(
-    ~~~~~~~~~~~~~~~~~~~~^
-        output_csv=CTRADER_SIGNAL,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ...<2 lines>...
-        interval='5m',
-        ^^^^^^^^^^^^^^
-    )
-    ^
-  File "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/tradingview_bridge.py", line 91, in write_ctrader_signal
-    signals = fetch_tv_signals([tv_exchange_symbol], screener=screener, interval=interval)
-  File "/Volumes/Almacen/Desarrollo/
-- cTrader signal CSV: ✅ exists (age_s=185)
-- Obsidian trading note: ✅ exists (age_s=5946)
-
-## Supervisión 2026-05-07T05:55:26.448107Z
-
-- Runner: ❌ ERROR
-  - stderr: Traceback (most recent call last):
-  File "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/final_paper_runner.py", line 89, in <module>
-    result = run()
-  File "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/final_paper_runner.py", line 29, in run
-    write_ctrader_signal(
-    ~~~~~~~~~~~~~~~~~~~~^
-        output_csv=CTRADER_SIGNAL,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ...<2 lines>...
-        interval='5m',
-        ^^^^^^^^^^^^^^
-    )
-    ^
-  File "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/tradingview_bridge.py", line 91, in write_ctrader_signal
-    signals = fetch_tv_signals([tv_exchange_symbol], screener=screener, interval=interval)
-  File "/Volumes/Almacen/Desarrollo/
-- cTrader signal CSV: ✅ exists (age_s=258)
-- Obsidian trading note: ✅ exists (age_s=6020)
-
-## Supervisión 2026-05-07T05:56:41.810445Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: False
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: ctrader signal failed (continuing): Expecting value: line 1 column 1 (char 0) | using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=70)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T07:54:13.402006Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T09:54:13.931257Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T10:56:19.732636Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T10:57:20.268161Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T10:58:20.790373Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T10:59:21.366711Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T11:00:21.849174Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T11:01:22.433472Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T11:01:38.541523Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T11:02:18.450984Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T11:02:22.970048Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T11:03:23.541156Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T11:04:24.138300Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T11:04:37.100634Z
-
-- Runner: ✅ OK
-  - ctrader_signal_written: True
-  - polymarket_enriched: True
-  - polymarket_simulated: True
-  - obsidian_updated: True
-  - notes: using cached enriched csv | polymarket run ok
-- cTrader signal CSV: ✅ exists (age_s=0)
-- Obsidian trading note: ✅ exists (age_s=0)
-
-## Supervisión 2026-05-07T14:00:35.843518Z
+## Supervisión 2026-05-07T11:54:14.372531Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
@@ -380,10 +94,10 @@
   - polymarket_simulated: True
   - obsidian_updated: True
   - notes: using cached enriched csv | polymarket run ok | portfolio run ok
-- cTrader signal CSV: ✅ exists (age_s=10558)
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-07T16:00:27.821589Z
+## Supervisión 2026-05-07T13:54:15.057144Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
@@ -391,10 +105,21 @@
   - polymarket_simulated: True
   - obsidian_updated: True
   - notes: using cached enriched csv | polymarket run ok | portfolio run ok
-- cTrader signal CSV: ✅ exists (age_s=17750)
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-07T18:00:28.672124Z
+## Supervisión 2026-05-07T15:54:15.618496Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: True
+  - polymarket_simulated: True
+  - obsidian_updated: True
+  - notes: using cached enriched csv | polymarket run ok | portfolio run ok
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-07T17:54:16.230394Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
@@ -402,10 +127,10 @@
   - polymarket_simulated: None
   - obsidian_updated: None
   - notes: poly run ok | portfolio run ok | fabian run ok
-- cTrader signal CSV: ✅ exists (age_s=24951)
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-07T20:00:27.594729Z
+## Supervisión 2026-05-07T19:54:16.860348Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
@@ -413,105 +138,204 @@
   - polymarket_simulated: None
   - obsidian_updated: None
   - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
-- cTrader signal CSV: ✅ exists (age_s=32150)
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-07T22:00:27.066914Z
+## Supervisión 2026-05-07T21:54:17.529340Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
   - polymarket_enriched: None
   - polymarket_simulated: None
   - obsidian_updated: None
-  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
-- cTrader signal CSV: ✅ exists (age_s=39350)
+  - notes: data_refreshed at 21:54:19Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-08T00:00:27.141883Z
+## Supervisión 2026-05-07T23:54:19.905724Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
   - polymarket_enriched: None
   - polymarket_simulated: None
   - obsidian_updated: None
-  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
-- cTrader signal CSV: ✅ exists (age_s=46550)
+  - notes: data_refreshed at 23:54:21Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-08T02:00:26.857638Z
+## Supervisión 2026-05-08T01:54:22.423387Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
   - polymarket_enriched: None
   - polymarket_simulated: None
   - obsidian_updated: None
-  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
-- cTrader signal CSV: ✅ exists (age_s=53749)
+  - notes: data_refreshed at 01:54:24Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-08T04:00:27.156352Z
+## Supervisión 2026-05-08T03:54:24.744200Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
   - polymarket_enriched: None
   - polymarket_simulated: None
   - obsidian_updated: None
-  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
-- cTrader signal CSV: ✅ exists (age_s=60950)
+  - notes: data_refreshed at 03:54:26Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-08T06:00:36.007542Z
+## Supervisión 2026-05-08T05:54:27.574707Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
   - polymarket_enriched: None
   - polymarket_simulated: None
   - obsidian_updated: None
-  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
-- cTrader signal CSV: ✅ exists (age_s=68159)
+  - notes: data_refreshed at 05:54:29Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-08T08:00:20.555881Z
+## Supervisión 2026-05-08T07:54:29.916439Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
   - polymarket_enriched: None
   - polymarket_simulated: None
   - obsidian_updated: None
-  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
-- cTrader signal CSV: ✅ exists (age_s=75343)
+  - notes: data_refreshed at 07:54:31Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-08T10:05:55.478557Z
+## Supervisión 2026-05-08T09:54:32.349431Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
   - polymarket_enriched: None
   - polymarket_simulated: None
   - obsidian_updated: None
-  - notes: poly failed: Traceback (most recent call last):
-  File "/Users/mimo13/bots-trading-autonomos-runtime/polymarket_paper_bot.py", line 516, in <module>
-    main()
-    | portfolio failed: Traceback (most recent call last):
-  File "/Users/mimo13/bots-trading-autonomos-runtime/polymarket_portfolio_bot.py", line 468, in <module>
-    main() | fabian failed: Traceback (most recent call last):
-  File "/Users/mimo13/bots-trading-autonomos-runtime/fabian_pullback_bot.py", line 660, in <module>
-    main()
-     | fabianpro failed: Traceback (most recent call last):
-  File "/Users/mimo13/bots-trading-autonomos-runtime/fabian_pro_bot.py", line 566, in <module>
-    main()
-    ~~~~^ | turtle run ok | turtle parse failed
-- cTrader signal CSV: ✅ exists (age_s=82880)
+  - notes: data_refreshed at 09:54:33Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 
-## Supervisión 2026-05-08T10:05:55.478554Z
+## Supervisión 2026-05-08T11:54:34.738862Z
 
 - Runner: ✅ OK
   - ctrader_signal_written: True
   - polymarket_enriched: None
   - polymarket_simulated: None
   - obsidian_updated: None
-  - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
-- cTrader signal CSV: ✅ exists (age_s=82880)
+  - notes: data_refreshed at 11:54:36Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-08T13:54:37.050449Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 13:54:38Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-08T15:54:39.573246Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 15:54:41Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-08T17:54:41.942153Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 17:54:43Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-08T19:54:44.611998Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 19:54:46Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-08T21:54:46.919386Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 21:54:48Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-08T23:54:49.321673Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 23:54:50Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-09T01:54:51.677976Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 01:54:53Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-09T03:54:54.308968Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 03:54:55Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-09T05:54:56.994409Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 05:54:58Z | poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
+- cTrader signal CSV: ✅ exists (age_s=0)
+- Obsidian trading note: ✅ exists (age_s=0)
+
+## Supervisión 2026-05-09T07:54:59.374881Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: data_refreshed at 07:55:01Z | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle summary loaded from file
+- cTrader signal CSV: ✅ exists (age_s=0)
 - Obsidian trading note: ✅ exists (age_s=0)
 

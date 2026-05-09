@@ -4,7 +4,7 @@ import json, subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path('/Volumes/Almacen/Desarrollo/bots-trading-autonomos')
+ROOT = Path('/Users/mimo13/bots-trading-autonomos-runtime')
 RUNTIME = ROOT / 'runtime'
 STATUS_MD = ROOT / 'PAPER_BOT_SUPERVISION_LOG.md'
 

@@ -1,0 +1,33 @@
+{
+  "initial_equity": 100.0,
+  "final_equity": 86.553346,
+  "total_pnl": -13.446654,
+  "total_trades": 30,
+  "wins": 14,
+  "losses": 16,
+  "win_rate_percent": 46.6667,
+  "max_drawdown_percent": 15.4427,
+  "config": {
+    "initial_equity": 100.0,
+    "edge_min": 0.0202,
+    "tv_filter_enabled": false,
+    "tv_min_confidence": 0.5,
+    "tv_alignment_required": false,
+    "atr_period": 14,
+    "atr_min_ratio": 5e-05,
+    "adx_period": 14,
+    "adx_min": 8.0,
+    "payout_multiplier": 0.95,
+    "kelly_fraction": 0.216,
+    "max_risk_per_trade": 0.08,
+    "max_daily_loss_percent": 30.0,
+    "max_trades_per_day": 30,
+    "loss_streak_pause": 5,
+    "pause_hours": 12
+  },
+  "outputs": {
+    "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/20260507T235421Z/decisions_log.csv",
+    "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/20260507T235421Z/trades_log.csv",
+    "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/20260507T235421Z/summary.json"
+  }
+}

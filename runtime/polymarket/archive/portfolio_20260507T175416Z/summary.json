@@ -1,0 +1,37 @@
+{
+  "initial_balance": 100.0,
+  "final_balance": 99.96,
+  "final_position_qty": 0.0,
+  "position_value": 0.0,
+  "final_equity": 99.96,
+  "total_pnl": -0.04,
+  "realized_pnl": -0.04,
+  "unrealized_pnl": 0.0,
+  "total_buys": 10,
+  "total_sells": 5,
+  "winning_sells": 0,
+  "losing_sells": 5,
+  "sell_win_rate_percent": 0.0,
+  "max_drawdown_percent": 0.04,
+  "config": {
+    "initial_balance": 100.0,
+    "buy_threshold": 0.55,
+    "sell_threshold": 0.45,
+    "edge_min": 0.03,
+    "risk_per_trade": 0.25,
+    "max_position_pct": 0.5,
+    "take_profit_pct": 0.02,
+    "stop_loss_pct": 0.015,
+    "sell_on_reversal": true,
+    "sell_fraction_on_signal": 1.0,
+    "max_hold_candles": 20,
+    "max_trades_per_day": 10,
+    "max_daily_loss_pct": 15.0
+  },
+  "outputs": {
+    "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260507T175416Z/decisions_log.csv",
+    "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260507T175416Z/trades_log.csv",
+    "portfolio_snapshots": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260507T175416Z/portfolio_snapshots.csv",
+    "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260507T175416Z/summary.json"
+  }
+}

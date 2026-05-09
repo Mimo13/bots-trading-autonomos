@@ -1,44 +1,282 @@
 {
-  "ts_utc": "2026-05-07T11:04:37.124667Z",
+  "ts_utc": "2026-05-09T08:54:58.164431Z",
   "ctrader_signal_written": true,
-  "polymarket_enriched": true,
-  "polymarket_simulated": true,
   "notes": [
-    "using cached enriched csv",
-    "polymarket run ok"
+    "data_refreshed at 08:54:59Z",
+    "portfolio run ok",
+    "fabian run ok",
+    "fabianpro run ok",
+    "mtfreg run ok",
+    "boxbr run ok",
+    "scalp run ok",
+    "turtle run ok",
+    "turtle summary loaded from file"
   ],
-  "polymarket_summary": {
-    "initial_equity": 1000.0,
-    "final_equity": 898.100312,
-    "total_pnl": -101.899688,
-    "total_trades": 4,
-    "wins": 1,
-    "losses": 3,
-    "win_rate_percent": 25.0,
-    "max_drawdown_percent": 10.19,
+  "portfolio_simulated": true,
+  "portfolio_summary": {
+    "initial_balance": 100.0,
+    "final_balance": 101.64,
+    "final_position_qty": 0.0,
+    "position_value": 0.0,
+    "final_equity": 101.64,
+    "total_pnl": 1.64,
+    "realized_pnl": 1.64,
+    "unrealized_pnl": 0.0,
+    "total_buys": 40,
+    "total_sells": 7,
+    "winning_sells": 7,
+    "losing_sells": 0,
+    "sell_win_rate_percent": 100.0,
+    "max_drawdown_percent": 0.51,
     "config": {
-      "initial_equity": 1000.0,
-      "edge_min": 0.01,
-      "tv_filter_enabled": false,
-      "tv_min_confidence": 0.5,
-      "tv_alignment_required": false,
-      "atr_period": 14,
-      "atr_min_ratio": 0.0001,
-      "adx_period": 14,
-      "adx_min": 12.0,
-      "payout_multiplier": 0.95,
-      "kelly_fraction": 0.5,
-      "max_risk_per_trade": 0.05,
-      "max_daily_loss_percent": 10.0,
-      "max_trades_per_day": 30,
-      "loss_streak_pause": 5,
-      "pause_hours": 12
+      "initial_balance": 100.0,
+      "buy_threshold": 0.52,
+      "sell_threshold": 0.48,
+      "edge_min": 0.015,
+      "risk_per_trade": 0.35,
+      "max_position_pct": 0.6,
+      "take_profit_pct": 0.03,
+      "stop_loss_pct": 0.025,
+      "sell_on_reversal": true,
+      "sell_fraction_on_signal": 1.0,
+      "max_hold_candles": 20,
+      "max_trades_per_day": 15,
+      "max_daily_loss_pct": 15.0
     },
     "outputs": {
-      "decisions_log": "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/polymarket/runs/20260507T110437Z/decisions_log.csv",
-      "trades_log": "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/polymarket/runs/20260507T110437Z/trades_log.csv",
-      "summary_json": "/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/polymarket/runs/20260507T110437Z/summary.json"
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T085459Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T085459Z/trades_log.csv",
+      "portfolio_snapshots": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T085459Z/portfolio_snapshots.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/portfolio_20260509T085459Z/summary.json"
     }
   },
-  "obsidian_updated": true
+  "fabian_simulated": true,
+  "fabian_summary": {
+    "initial_balance": 100.0,
+    "final_balance": 109.0,
+    "total_pnl": 9.0,
+    "total_trades": 3,
+    "wins": 3,
+    "losses": 0,
+    "win_rate_percent": 100.0,
+    "max_drawdown_percent": 0.0,
+    "config": {
+      "risk_percent": 3.0,
+      "reduced_risk_percent": 1.5,
+      "max_daily_loss_pct": 10.0,
+      "max_trades_per_session": 4,
+      "max_trades_per_day": 8,
+      "min_rr": 1.0,
+      "sl_buffer_pips": 0.1,
+      "enable_trailing": true,
+      "enable_break_even_at_1r": true,
+      "swing_lookback": 1,
+      "structure_bars": 40,
+      "body_avg_period": 10,
+      "force_body_multiplier": 1.0,
+      "max_wick_to_body_ratio": 3.0,
+      "pending_order_expiry_minutes": 60,
+      "entry_mode": 1,
+      "crypto_mode": true,
+      "london_start": [
+        7,
+        0
+      ],
+      "london_end": [
+        12,
+        0
+      ],
+      "ny_start": [
+        13,
+        30
+      ],
+      "ny_end": [
+        20,
+        0
+      ],
+      "avoid_first_session_minutes": 0,
+      "max_spread_pips": 2.0,
+      "initial_balance": 100.0
+    },
+    "outputs": {
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T085459Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T085459Z/trades_log.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabian_20260509T085459Z/summary.json"
+    }
+  },
+  "fabianpro_simulated": true,
+  "fabianpro_summary": {
+    "initial_balance": 100.0,
+    "final_balance": 103.35,
+    "total_pnl": 3.35,
+    "total_trades": 8,
+    "wins": 5,
+    "losses": 3,
+    "win_rate_percent": 62.5,
+    "max_drawdown_percent": 94.82,
+    "final_position_qty": 0.0,
+    "position_value": 0.0,
+    "config": {
+      "risk_percent": 2.0,
+      "reduced_risk_percent": 1.0,
+      "max_daily_loss_pct": 10.0,
+      "max_trades_per_session": 4,
+      "max_trades_per_day": 8,
+      "min_rr": 1.0,
+      "sl_buffer_pips": 0.15,
+      "enable_trailing": true,
+      "enable_break_even": true,
+      "crypto_mode": true,
+      "swing_lookback": 1,
+      "structure_bars": 40,
+      "body_avg_period": 10,
+      "force_body_multiplier": 1.0,
+      "max_wick_to_body_ratio": 3.0,
+      "entry_mode": 1,
+      "pending_order_expiry_minutes": 60,
+      "max_entries_per_structure": 2,
+      "min_break_pullback_candles": 0,
+      "max_break_pullback_candles": 15,
+      "use_adx_filter": true,
+      "adx_period": 14,
+      "adx_min": 15.0,
+      "use_atr_sizing": true,
+      "atr_period": 14,
+      "atr_multiplier_sl": 1.5,
+      "atr_multiplier_tp": 2.5,
+      "partial_take_profit_pct": 0.0,
+      "initial_balance": 100.0
+    },
+    "outputs": {
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T085459Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T085459Z/trades_log.csv",
+      "portfolio_snapshots": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T085459Z/portfolio_snapshots.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/fabianpro_20260509T085459Z/summary.json"
+    }
+  },
+  "mtfreg_simulated": true,
+  "mtfreg_summary": {
+    "initial_balance": 100.0,
+    "final_balance": 100.21,
+    "total_pnl": 0.21,
+    "total_trades": 4,
+    "wins": 2,
+    "losses": 2,
+    "win_rate_percent": 50.0,
+    "config": {
+      "initial_balance": 100.0,
+      "risk_per_trade": 0.03,
+      "ema_fast": 20,
+      "ema_slow": 50,
+      "pullback_pct": 0.003,
+      "tp_pct": 0.02,
+      "sl_pct": 0.01,
+      "max_trades_per_day": 8
+    },
+    "outputs": {
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/mtfreg_20260509T085459Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/mtfreg_20260509T085459Z/trades_log.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/mtfreg_20260509T085459Z/summary.json"
+    }
+  },
+  "boxbr_simulated": true,
+  "boxbr_summary": {
+    "initial_balance": 100.0,
+    "final_balance": 100.07,
+    "total_pnl": 0.07,
+    "total_trades": 5,
+    "wins": 3,
+    "losses": 2,
+    "win_rate_percent": 60.0,
+    "config": {
+      "initial_balance": 100.0,
+      "risk_per_trade": 0.03,
+      "lookback": 20,
+      "breakout_buffer": 0.001,
+      "tp_pct": 0.025,
+      "sl_pct": 0.012,
+      "max_trades_per_day": 8
+    },
+    "outputs": {
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/boxbr_20260509T085459Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/boxbr_20260509T085459Z/trades_log.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/boxbr_20260509T085459Z/summary.json"
+    }
+  },
+  "scalp_simulated": true,
+  "scalp_summary": {
+    "initial_balance": 100.0,
+    "final_balance": 100.03,
+    "total_pnl": 0.03,
+    "total_trades": 6,
+    "wins": 4,
+    "losses": 2,
+    "win_rate_percent": 66.67,
+    "config": {
+      "initial_balance": 100.0,
+      "risk_per_trade": 0.02,
+      "max_daily_loss_pct": 5.0,
+      "max_trades_per_day": 8,
+      "max_consecutive_losses": 3,
+      "cooldown_after_loss_streak_min": 240,
+      "session_start_utc": "07:00",
+      "session_end_utc": "19:00",
+      "min_atr_ratio": 0.0008,
+      "ema_fast": 8,
+      "ema_slow": 21,
+      "rsi_period": 7,
+      "rsi_oversold": 35,
+      "rsi_overbought": 65,
+      "rsi_entry_bullish_min": 55,
+      "rsi_entry_bearish_max": 45,
+      "adx_min": 22,
+      "sl_atr_multiplier": 1.0,
+      "tp_atr_multiplier": 1.5,
+      "min_rr": 1.2,
+      "max_spread_pct": 0.001,
+      "symbols": [
+        "SOLUSDT"
+      ]
+    },
+    "outputs": {
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/scalp_20260509T085459Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/scalp_20260509T085459Z/trades_log.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/scalp_20260509T085459Z/summary.json"
+    }
+  },
+  "turtle_simulated": true,
+  "turtle_summary": {
+    "initial_balance": 100.0,
+    "final_balance": 100.0,
+    "total_pnl": 0.0,
+    "total_trades": 0,
+    "wins": 0,
+    "losses": 0,
+    "win_rate_percent": 0,
+    "max_drawdown_percent": 0.0,
+    "config": {
+      "initial_balance": 100.0,
+      "risk_per_trade": 0.03,
+      "donchian_period": 7,
+      "atr_period": 14,
+      "atr_stop_multiplier": 1.5,
+      "pyramid_levels": 3,
+      "pyramid_increment_pct": 0.5,
+      "pyramid_unit_size_pct": 0.5,
+      "max_risk_per_position": 0.04,
+      "max_positions": 6,
+      "max_daily_loss_pct": 10.0,
+      "max_trades_per_day": 10,
+      "enable_pyramiding": true,
+      "enable_trailing": true,
+      "trailing_start_atr": 1.0,
+      "exit_on_signal_reversal": false
+    },
+    "outputs": {
+      "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/turtle_20260509T085459Z/decisions_log.csv",
+      "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/turtle_20260509T085459Z/trades_log.csv",
+      "portfolio_snapshots": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/turtle_20260509T085459Z/portfolio_snapshots.csv",
+      "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/turtle_20260509T085459Z/summary.json"
+    }
+  }
 }

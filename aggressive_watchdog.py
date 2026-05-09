@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import urlopen
 
-ROOT=Path('/Volumes/Almacen/Desarrollo/bots-trading-autonomos')
+ROOT=Path('/Users/mimo13/bots-trading-autonomos-runtime')
 LOG=ROOT/'runtime/logs/watchdog.log'
 CTRADER_SIGNAL=ROOT/'runtime/tradingview/ctrader_signal.csv'
 LAST_STATUS=ROOT/'runtime/polymarket/last_runner_status.json'

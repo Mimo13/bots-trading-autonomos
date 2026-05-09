@@ -1,0 +1,3 @@
+entry_timestamp_utc,exit_timestamp_utc,instrument,timeframe,side,stake,p_side_model,edge,entry_price,exit_price,result,pnl,equity_after
+2026-01-01T02:20:00+00:00,2026-01-01T02:25:00+00:00,BTC,5m,UP,80.0,0.7097,0.1878,43021.63,43017.25,LOSS,-80.0,920.0
+2026-01-01T02:25:00+00:00,2026-01-01T02:30:00+00:00,BTC,5m,DOWN,73.6,0.5742,0.0442,43017.25,43036.73,LOSS,-73.6,846.4

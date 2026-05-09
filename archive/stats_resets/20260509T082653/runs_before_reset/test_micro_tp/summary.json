@@ -1,0 +1,36 @@
+{
+  "initial_balance": 1000.0,
+  "final_balance": 999.65,
+  "final_position_qty": 0.0,
+  "position_value": 0.0,
+  "final_equity": 999.65,
+  "total_pnl": -0.35,
+  "realized_pnl": -0.35,
+  "unrealized_pnl": 0.0,
+  "total_buys": 5,
+  "total_sells": 0,
+  "winning_sells": 0,
+  "losing_sells": 0,
+  "sell_win_rate_percent": 0,
+  "max_drawdown_percent": 0.04,
+  "config": {
+    "initial_balance": 1000.0,
+    "buy_threshold": 0.55,
+    "sell_threshold": 0.45,
+    "edge_min": 0.03,
+    "risk_per_trade": 0.25,
+    "max_position_pct": 0.5,
+    "take_profit_pct": 0.0008,
+    "stop_loss_pct": 0.0005,
+    "sell_on_reversal": true,
+    "sell_fraction_on_signal": 1.0,
+    "max_trades_per_day": 10,
+    "max_daily_loss_pct": 15.0
+  },
+  "outputs": {
+    "decisions_log": "runtime/polymarket/runs/test_micro_tp/decisions_log.csv",
+    "trades_log": "runtime/polymarket/runs/test_micro_tp/trades_log.csv",
+    "portfolio_snapshots": "runtime/polymarket/runs/test_micro_tp/portfolio_snapshots.csv",
+    "summary_json": "runtime/polymarket/runs/test_micro_tp/summary.json"
+  }
+}
