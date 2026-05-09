@@ -1,9 +1,9 @@
 {
   "initial_balance": 100.0,
-  "risk_per_trade": 0.03,
-  "lookback": 15,
-  "breakout_buffer": 0.001,
+  "risk_per_trade": 0.02,
+  "lookback": 20,
+  "breakout_buffer": 0.002,
   "tp_pct": 0.03,
   "sl_pct": 0.012,
-  "max_trades_per_day": 8
+  "max_trades_per_day": 6
 }

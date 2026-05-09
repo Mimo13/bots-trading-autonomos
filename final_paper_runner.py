@@ -152,10 +152,46 @@ def run() -> dict:
 
     # 7. AI Grid Advisor (recalcular cuadrícula)
     try:
-        subprocess.Popen([PYTHON, str(ROOT / 'ai_grid_advisor.py')], cwd=ROOT)
+        subprocess.Popen([PYTHON, str(ROOT / 'ai_grid_advisor.py')], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         status['notes'].append('grid advisor started')
     except Exception as e:
         status['notes'].append(f'grid advisor error: {str(e)[:80]}')
+
+    # 8. MTF Regime Bot — confluencia régimen + pullback
+    tmp8 = POLY_RUNS_DIR / f'_cfg_mtfreg_{ts}.json'
+    cfg8 = json.loads((ROOT / 'mtf_regime_config.json').read_text())
+    cfg8['initial_balance'] = INITIAL_BALANCE
+    tmp8.write_text(json.dumps(cfg8))
+    out8 = POLY_RUNS_DIR / f'mtfreg_{ts}'
+    cmd8 = [PYTHON, str(ROOT / 'mtf_regime_bot.py'),
+            '--input', str(poly_input), '--config', str(tmp8), '--output-dir', str(out8)]
+    s8 = run_bot(cmd8, 'mtfreg', 'final_balance', status)
+    if s8: status['mtfreg_summary'] = s8
+    if tmp8.exists(): tmp8.unlink()
+
+    # 9. Box Breakout Bot — ruptura de caja
+    tmp9 = POLY_RUNS_DIR / f'_cfg_boxbr_{ts}.json'
+    cfg9 = json.loads((ROOT / 'box_breakout_config.json').read_text())
+    cfg9['initial_balance'] = INITIAL_BALANCE
+    tmp9.write_text(json.dumps(cfg9))
+    out9 = POLY_RUNS_DIR / f'boxbr_{ts}'
+    cmd9 = [PYTHON, str(ROOT / 'box_breakout_bot.py'),
+            '--input', str(poly_input), '--config', str(tmp9), '--output-dir', str(out9)]
+    s9 = run_bot(cmd9, 'boxbr', 'final_balance', status)
+    if s9: status['boxbr_summary'] = s9
+    if tmp9.exists(): tmp9.unlink()
+
+    # 10. Scalping 5m Bot — momentum + estructura + hard kills
+    tmp10 = POLY_RUNS_DIR / f'_cfg_scalp_{ts}.json'
+    cfg10 = json.loads((ROOT / 'scalping_5m_config.json').read_text())
+    cfg10['initial_balance'] = INITIAL_BALANCE
+    tmp10.write_text(json.dumps(cfg10))
+    out10 = POLY_RUNS_DIR / f'scalp_{ts}'
+    cmd10 = [PYTHON, str(ROOT / 'scalping_5m_bot.py'),
+            '--input', str(poly_input), '--config', str(tmp10), '--output-dir', str(out10)]
+    s10 = run_bot(cmd10, 'scalp', 'final_balance', status)
+    if s10: status['scalp_summary'] = s10
+    if tmp10.exists(): tmp10.unlink()
 
     # Obsidian log (optional)
     subprocess.run(['python3', str(ROOT / 'update_obsidian_trading_log.py')],

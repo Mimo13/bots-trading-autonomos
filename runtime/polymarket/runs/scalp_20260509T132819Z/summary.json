@@ -1,0 +1,40 @@
+{
+  "initial_balance": 100.0,
+  "final_balance": 99.99,
+  "total_pnl": -0.01,
+  "total_trades": 10,
+  "wins": 4,
+  "losses": 6,
+  "win_rate_percent": 40.0,
+  "config": {
+    "initial_balance": 100.0,
+    "risk_per_trade": 0.03,
+    "max_daily_loss_pct": 5.0,
+    "max_trades_per_day": 12,
+    "max_consecutive_losses": 3,
+    "cooldown_after_loss_streak_min": 120,
+    "session_start_utc": "06:00",
+    "session_end_utc": "22:00",
+    "min_atr_ratio": 0.0006,
+    "ema_fast": 6,
+    "ema_slow": 15,
+    "rsi_period": 5,
+    "rsi_oversold": 30,
+    "rsi_overbought": 70,
+    "rsi_entry_bullish_min": 52,
+    "rsi_entry_bearish_max": 48,
+    "adx_min": 20,
+    "sl_atr_multiplier": 0.8,
+    "tp_atr_multiplier": 1.2,
+    "min_rr": 1.0,
+    "max_spread_pct": 0.001,
+    "symbols": [
+      "SOLUSDT"
+    ]
+  },
+  "outputs": {
+    "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/scalp_20260509T132819Z/decisions_log.csv",
+    "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/scalp_20260509T132819Z/trades_log.csv",
+    "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/scalp_20260509T132819Z/summary.json"
+  }
+}

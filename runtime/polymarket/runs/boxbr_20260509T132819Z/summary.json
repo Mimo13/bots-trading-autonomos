@@ -1,0 +1,23 @@
+{
+  "initial_balance": 100.0,
+  "final_balance": 100.03,
+  "total_pnl": 0.03,
+  "total_trades": 8,
+  "wins": 2,
+  "losses": 6,
+  "win_rate_percent": 25.0,
+  "config": {
+    "initial_balance": 100.0,
+    "risk_per_trade": 0.03,
+    "lookback": 15,
+    "breakout_buffer": 0.001,
+    "tp_pct": 0.03,
+    "sl_pct": 0.012,
+    "max_trades_per_day": 8
+  },
+  "outputs": {
+    "decisions_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/boxbr_20260509T132819Z/decisions_log.csv",
+    "trades_log": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/boxbr_20260509T132819Z/trades_log.csv",
+    "summary_json": "/Users/mimo13/bots-trading-autonomos-runtime/runtime/polymarket/runs/boxbr_20260509T132819Z/summary.json"
+  }
+}
