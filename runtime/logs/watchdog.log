@@ -8660,3 +8660,48 @@
 2026-05-09T10:49:16.665610Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
 2026-05-09T10:49:16.665789Z | ages: ctrader_signal=8s last_runner_status=7s
 2026-05-09T10:49:16.665835Z | health: OK signal_age=8s status_age=7s
+2026-05-09T10:50:16.771215Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:50:16.771423Z | ages: ctrader_signal=68s last_runner_status=68s
+2026-05-09T10:50:16.771481Z | health: OK signal_age=68s status_age=68s
+2026-05-09T10:51:16.912772Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:51:16.913150Z | ages: ctrader_signal=128s last_runner_status=128s
+2026-05-09T10:51:16.913206Z | health: OK signal_age=128s status_age=128s
+2026-05-09T10:52:17.051071Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:52:17.051229Z | ages: ctrader_signal=188s last_runner_status=188s
+2026-05-09T10:52:17.051272Z | health: OK signal_age=188s status_age=188s
+2026-05-09T10:53:17.189992Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:53:17.190183Z | ages: ctrader_signal=29s last_runner_status=248s
+2026-05-09T10:53:17.190231Z | health: OK signal_age=29s status_age=248s
+2026-05-09T10:54:17.328038Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:54:17.328197Z | ages: ctrader_signal=89s last_runner_status=308s
+2026-05-09T10:54:17.328243Z | health: OK signal_age=89s status_age=308s
+2026-05-09T10:55:17.457771Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:55:17.457930Z | ages: ctrader_signal=149s last_runner_status=368s
+2026-05-09T10:55:17.457976Z | health: OK signal_age=149s status_age=368s
+2026-05-09T10:56:17.594819Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:56:17.594967Z | ages: ctrader_signal=209s last_runner_status=428s
+2026-05-09T10:56:17.595009Z | health: OK signal_age=209s status_age=428s
+2026-05-09T10:57:17.733970Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:57:17.734122Z | ages: ctrader_signal=270s last_runner_status=488s
+2026-05-09T10:57:17.734166Z | health: OK signal_age=270s status_age=488s
+2026-05-09T10:58:17.906777Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:58:17.907125Z | ages: ctrader_signal=29s last_runner_status=549s
+2026-05-09T10:58:17.907182Z | health: OK signal_age=29s status_age=549s
+2026-05-09T10:59:18.049687Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T10:59:18.049854Z | ages: ctrader_signal=89s last_runner_status=609s
+2026-05-09T10:59:18.049898Z | health: OK signal_age=89s status_age=609s
+2026-05-09T11:00:18.181859Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T11:00:18.182029Z | ages: ctrader_signal=149s last_runner_status=669s
+2026-05-09T11:00:18.182074Z | health: OK signal_age=149s status_age=669s
+2026-05-09T11:01:18.320317Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T11:01:18.320511Z | ages: ctrader_signal=210s last_runner_status=729s
+2026-05-09T11:01:18.320560Z | health: OK signal_age=210s status_age=729s
+2026-05-09T11:02:18.453525Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T11:02:18.453687Z | ages: ctrader_signal=270s last_runner_status=789s
+2026-05-09T11:02:18.453731Z | health: OK signal_age=270s status_age=789s
+2026-05-09T11:03:18.595454Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T11:03:18.595633Z | ages: ctrader_signal=29s last_runner_status=849s
+2026-05-09T11:03:18.595683Z | health: OK signal_age=29s status_age=849s
+2026-05-09T11:04:18.740740Z | tradingview_cdp: OK browser=Chrome/140.0.7339.133
+2026-05-09T11:04:18.741165Z | ages: ctrader_signal=89s last_runner_status=909s
+2026-05-09T11:04:18.741217Z | health: OK signal_age=89s status_age=909s

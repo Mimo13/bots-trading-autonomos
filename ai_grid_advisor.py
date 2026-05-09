@@ -57,6 +57,18 @@ def gather_market_data() -> dict:
     data = {'sources_available': {}, 'sources_missing': []}
     ts = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
+    # Free sources (siempre disponibles, sin API key)
+    try:
+        from data_sources.free_sources import fetch_all_free
+        free_data = fetch_all_free()
+        if free_data and free_data.get('items'):
+            data['free_sources'] = free_data
+            data['sources_available']['binance_futures'] = True
+            data['sources_available']['coingecko'] = True
+    except Exception as e:
+        logger.warning(f'Free sources failed: {e}')
+        data['sources_available']['free_sources'] = False
+
     # CoinMarketCap
     try:
         from data_sources.coinmarketcap_feed import fetch_global_metrics, fetch_xrp_price
