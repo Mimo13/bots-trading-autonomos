@@ -131,18 +131,18 @@ def load_sol_pb(conn):
                         symbol = x.get('symbol', 'SOLUSDT')
                         qty = float(x.get('qty', 0) or 0)
                         entry_price = float(x.get('entry', 0) or 0)
+                        exit_price = float(x.get('exit', 0) or 0)
                         
-                        if action in ('BUY',):
-                            side = 'BUY'; result = ''
-                        elif action in ('SELL',):
-                            side = 'SELL'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                        if action == 'BUY':
+                            side = 'BUY'
+                            result = ''  # posicion abierta
+                            usd_amount = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
+                        elif action == 'SELL':
+                            side = 'SELL'
+                            result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            usd_amount = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
                         else:
                             continue
-                        
-                        if pnl == 0 and result == '':
-                            continue  # entry rows
-                        
-                        usd_amount = abs(pnl) if pnl != 0 else (qty * entry_price) if qty > 0 else 0
                         
                         raw = dict(x)
                         if 'symbol' not in raw or not raw.get('symbol'):
@@ -151,6 +151,15 @@ def load_sol_pb(conn):
                         conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
                         values('sol_pb',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
                                      [ts, side, qty, usd_amount, pnl, result, json.dumps(raw)])
+                        
+                        # Cuando se inserta un SELL, marcar el BUY anterior como paired
+                        if action == 'SELL':
+                            conn.execute(
+                                """update trades set result='ENTRY_PAIRED' where ctid in (
+                                    select ctid from trades where bot_name='sol_pb' and side='BUY' and result='' and ts < %s order by ts desc limit 1
+                                )""",
+                                [ts]
+                            )
     
     # Balance desde BD
     r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='sol_pb'")
