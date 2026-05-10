@@ -442,7 +442,7 @@ def load_generic_run_bot(conn, bot_name: str, prefix: str):
                         except Exception:
                             continue
                         pnl = float(x.get('pnl', 0) or 0)
-                        side = x.get('side', '').upper()
+                        side = (x.get('side') or x.get('action') or '').upper()
                         qty = float(x.get('qty', 0) or 0)
                         usd = float(x.get('usd_amount', 0) or abs(pnl) or 0)
                         if side in ('BUY', 'SHORT'):
