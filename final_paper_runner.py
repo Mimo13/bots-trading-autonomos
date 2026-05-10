@@ -55,6 +55,23 @@ def run() -> dict:
     except Exception as e:
         status['notes'].append(f'ctrader signal failed: {str(e)[:80]}')
 
+    # Fetch live data for all bot symbols from Binance
+    try:
+        from data_fetcher import update_feed_file
+        feed_symbols = ['SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'BTCUSDT']
+        feed_dir = ROOT / 'runtime' / 'live'
+        for sym in feed_symbols:
+            try:
+                p = update_feed_file(sym, '5m', feed_dir)
+                if p:
+                    status['notes'].append(f'feed {sym}: ok')
+                else:
+                    status['notes'].append(f'feed {sym}: no data')
+            except Exception as fe:
+                status['notes'].append(f'feed {sym}: {str(fe)[:60]}')
+    except Exception as e:
+        status['notes'].append(f'live data fetch: {str(e)[:80]}')
+
     # Use live data feed first, then fall back to polymarket input
     poly_input = LIVE_FEED if LIVE_FEED.exists() else (POLY_ENRICHED if POLY_ENRICHED.exists() else POLY_BASE)
     if not poly_input.exists():
