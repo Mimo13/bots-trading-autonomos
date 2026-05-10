@@ -258,26 +258,40 @@ def load_fabianpro(conn):
                             continue
                         pnl = float(x.get('pnl', 0) or 0)
                         action = x.get('action', '').upper()
-                        usd = abs(pnl)
+                        qty = float(x.get('qty', 0) or 0)
+                        entry_price = float(x.get('entry_price', x.get('entry', 0)) or 0)
+                        exit_price = float(x.get('exit_price', x.get('exit', 0)) or 0)
+                        
                         if action in ('BUY',):
                             side = 'BUY'; result = ''
+                            usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
                         elif action in ('SELL',):
                             side = 'SELL'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
                         elif action in ('SHORT',):
                             side = 'SHORT'; result = ''
+                            usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
                         elif action in ('COVER',):
                             side = 'COVER'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
                         else:
-                            side = action; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
-                        # Saltar filas de entrada sin PnL (crean fantasmas con qty=0)
-                        if pnl == 0 and result == '':
                             continue
-                        # FabianPro siempre opera SOLUSDT; forzar símbolo si no viene en CSV
+                        
                         if 'symbol' not in x or not x.get('symbol'):
                             x['symbol'] = 'SOLUSDT'
                         conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
                         values('fabianpro',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
-                                     [ts, side, usd, usd, pnl, result, json.dumps(x)])
+                                     [ts, side, qty, usd, pnl, result, json.dumps(x)])
+                        
+                        # Pair entry with exit
+                        if action in ('SELL', 'COVER'):
+                            entry_side = 'BUY' if action == 'SELL' else 'SHORT'
+                            conn.execute(
+                                """update trades set result='ENTRY_PAIRED' where ctid in (
+                                    select ctid from trades where bot_name='fabianpro' and side=%s and result='' and ts < %s order by ts desc limit 1
+                                )""",
+                                [entry_side, ts]
+                            )
     # Calcular balance desde BD: $100 + suma(PnL de todos los trades)
     r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabianpro'")
     total_pnl = r.fetchone()[0]
@@ -309,32 +323,39 @@ def load_fabian_py(conn):
                             continue
                         pnl = float(x.get('pnl', 0) or 0)
                         action = x.get('action', '').upper()
-                        usd = abs(pnl)
-                        # Mapear acciones a side del dashboard
+                        qty = float(x.get('qty', 0) or 0)
+                        entry_price = float(x.get('entry_price', x.get('entry', 0)) or 0)
+                        exit_price = float(x.get('exit_price', x.get('exit', 0)) or 0)
+                        
                         if action in ('BUY_STOP', 'BUY'):
-                            side = 'BUY'
-                            result = ''  # entrada, posición abierta
+                            side = 'BUY'; result = ''
+                            usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
                         elif action in ('SELL_STOP', 'SHORT'):
-                            side = 'SHORT'
-                            result = ''  # entrada, posición abierta
+                            side = 'SHORT'; result = ''
+                            usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
                         elif action in ('SELL',):
-                            side = 'SELL'  # cierre de largo
-                            result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            side = 'SELL'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
                         elif action in ('COVER',):
-                            side = 'COVER'  # cierre de corto
-                            result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            side = 'COVER'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
                         else:
-                            side = action
-                            result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
-                        # Saltar filas de entrada sin PnL (crean fantasmas con qty=0)
-                        if pnl == 0 and result == '':
                             continue
-                        # Fabian Python siempre opera SOLUSDT; forzar símbolo si no viene en CSV
+                        
                         if 'symbol' not in x or not x.get('symbol'):
                             x['symbol'] = 'SOLUSDT'
                         conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
                         values('fabian_py',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
-                                     [ts, side, usd, usd, pnl, result, json.dumps(x)])
+                                     [ts, side, qty, usd, pnl, result, json.dumps(x)])
+                        
+                        if action in ('SELL', 'COVER'):
+                            entry_side = 'BUY' if action == 'SELL' else 'SHORT'
+                            conn.execute(
+                                """update trades set result='ENTRY_PAIRED' where ctid in (
+                                    select ctid from trades where bot_name='fabian_py' and side=%s and result='' and ts < %s order by ts desc limit 1
+                                )""",
+                                [entry_side, ts]
+                            )
     # Calcular balance desde BD: $100 + suma(PnL de todos los trades)
     r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabian_py'")
     total_pnl = r.fetchone()[0]
@@ -379,6 +400,15 @@ def load_turtle(conn):
                         conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
                         values('turtle',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
                                      [ts, s, usd, usd, pnl, r, json.dumps(x)])
+                        # Pair exit with entry
+                        if side in ('SELL', 'CLOSE', 'COVER'):
+                            entry_side = 'BUY' if side in ('SELL', 'CLOSE') else 'SHORT'
+                            conn.execute(
+                                """update trades set result='ENTRY_PAIRED' where ctid in (
+                                    select ctid from trades where bot_name='turtle' and side=%s and result='' and ts < %s order by ts desc limit 1
+                                )""",
+                                [entry_side, ts]
+                            )
     balance = INITIAL_BALANCE
     latest_mtime = 0
     for entry in sorted((ROOT / 'runtime/polymarket/runs').iterdir()):
@@ -424,6 +454,15 @@ def load_generic_run_bot(conn, bot_name: str, prefix: str):
                         conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
                         values(%s,%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
                                      [bot_name, ts, side, qty, usd, pnl, result, json.dumps(x)])
+                        # Pair exit with entry
+                        if side in ('SELL', 'COVER'):
+                            entry_side = 'BUY' if side == 'SELL' else 'SHORT'
+                            conn.execute(
+                                """update trades set result='ENTRY_PAIRED' where ctid in (
+                                    select ctid from trades where bot_name=%s and side=%s and result='' and ts < %s order by ts desc limit 1
+                                )""",
+                                [bot_name, entry_side, ts]
+                            )
 
     balance = INITIAL_BALANCE
     latest_mtime = 0
