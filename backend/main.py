@@ -18,8 +18,8 @@ BOT_META = {
     'sol_pb': {'label': 'SolPullbackBot', 'short': 'SolPullback', 'order': 10, 'family': 'crypto'},
     'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', 'order': 20, 'family': 'crypto'},
     'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
-    'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet', 'ai': True},
-    'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet', 'ai': True},
+    # ARCHIVADO: 'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet'},
+    # ARCHIVADO: 'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet'},
     'tv_sol': {'label': 'TV Signal SOL', 'short': 'TV-SOL', 'order': 41, 'family': 'crypto'},
     'mtfreg': {'label': 'MTF Regime Bot', 'short': 'MTFReg', 'order': 45, 'family': 'crypto'},
     'boxbr': {'label': 'Box Breakout Bot', 'short': 'BoxBr', 'order': 46, 'family': 'crypto'},
@@ -295,7 +295,7 @@ def weekly_compare():
              coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
-        and bot_name not in ('poly','fabian','pfolio')
+        and bot_name not in ('poly','fabian','pfolio','fabian_live_pullback','fabian_live_pro')
       group by bot_name
     ''')
 
@@ -304,7 +304,7 @@ def weekly_compare():
         agg[r[0]]={'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])}
 
     # Include all bots from BOT_META except poly, and those in bot_status
-    bots_rows=q("select bot_name from bot_status where bot_name not in ('poly','fabian','pfolio') order by bot_name")
+    bots_rows=q("select bot_name from bot_status where bot_name not in ('poly','fabian','pfolio','fabian_live_pullback','fabian_live_pro') order by bot_name")
     bot_names=[r[0] for r in bots_rows]
     for b in BOT_META.keys():
         if b != 'poly' and b not in bot_names:
@@ -382,7 +382,7 @@ def stop(bot:str):
 @app.get('/api/bots')
 def bots_list():
     """List all registered bots dynamically."""
-    rows = q("select bot_name, is_running, mode from bot_status where bot_name not in ('poly','fabian','pfolio') order by bot_name")
+    rows = q("select bot_name, is_running, mode from bot_status where bot_name not in ('poly','fabian','pfolio','fabian_live_pullback','fabian_live_pro') order by bot_name")
     bots=[]
     for r in rows:
         m=_meta(r[0])
