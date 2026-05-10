@@ -183,7 +183,7 @@ def load_pfolio(conn):
     day0 = now.date()
     week0 = now - timedelta(days=7)
     if runs.exists():
-        for entry in runs.glob('portfolio_*'):
+        for entry in list(runs.glob('portfolio_*')) + list(runs.glob('pfolio_*')):
             tl = entry / 'trades_log.csv'
             if tl.exists():
                 with tl.open() as f:
@@ -212,7 +212,7 @@ def load_pfolio(conn):
     
     latest_summary = None
     latest_mtime = 0
-    for entry in runs.glob('portfolio_*'):
+    for entry in list(runs.glob('portfolio_*')) + list(runs.glob('pfolio_*')):
         s = entry / 'summary.json'
         if s.exists():
             mt = s.stat().st_mtime
@@ -488,7 +488,7 @@ def main():
         ensure_schema(conn)
         load_poly(conn)
         load_sol_pb(conn)
-        # load_pfolio(conn)  # ARCHIVADO 2026-05-10: señales fake, 156 posiciones fantasma
+        load_pfolio(conn)  # reactivado 2026-05-10: RSI-based
         load_fabian_py(conn)
         load_fabianpro(conn)
         load_generic_run_bot(conn, 'xrp_grid', 'xrp_grid')

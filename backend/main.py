@@ -25,7 +25,7 @@ BOT_META = {
     'boxbr': {'label': 'Box Breakout Bot', 'short': 'BoxBr', 'order': 46, 'family': 'crypto'},
     'scalp': {'label': 'Scalping 5m Bot', 'short': 'Scalp5m', 'order': 47, 'family': 'crypto'},
     'xrp_grid': {'label': 'XRP Grid Bot', 'short': 'XRPGrid', 'order': 48, 'family': 'crypto'},
-    # ARCHIVADO: 'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'polymarket'},
+    'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'crypto', 'ai': True},
 }
 
 def _meta(bot: str):
@@ -295,7 +295,7 @@ def weekly_compare():
              coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
-        and bot_name not in ('poly','fabian','pfolio','fabian_live_pullback','fabian_live_pro')
+        and bot_name not in ('poly','fabian','fabian_live_pullback','fabian_live_pro')
       group by bot_name
     ''')
 
@@ -304,7 +304,7 @@ def weekly_compare():
         agg[r[0]]={'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])}
 
     # Include all bots from BOT_META except poly, and those in bot_status
-    bots_rows=q("select bot_name from bot_status where bot_name not in ('poly','fabian','pfolio','fabian_live_pullback','fabian_live_pro') order by bot_name")
+    bots_rows=q("select bot_name from bot_status where bot_name not in ('poly','fabian','fabian_live_pullback','fabian_live_pro') order by bot_name")
     bot_names=[r[0] for r in bots_rows]
     for b in BOT_META.keys():
         if b != 'poly' and b not in bot_names:
@@ -382,7 +382,7 @@ def stop(bot:str):
 @app.get('/api/bots')
 def bots_list():
     """List all registered bots dynamically."""
-    rows = q("select bot_name, is_running, mode from bot_status where bot_name not in ('poly','fabian','pfolio','fabian_live_pullback','fabian_live_pro') order by bot_name")
+    rows = q("select bot_name, is_running, mode from bot_status where bot_name not in ('poly','fabian','fabian_live_pullback','fabian_live_pro') order by bot_name")
     bots=[]
     for r in rows:
         m=_meta(r[0])
