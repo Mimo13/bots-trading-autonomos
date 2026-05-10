@@ -465,6 +465,7 @@ def load_generic_run_bot(conn, bot_name: str, prefix: str):
                             )
 
     balance = INITIAL_BALANCE
+    tokens_value = 0.0
     latest_mtime = 0
     if runs.exists():
         for entry in runs.iterdir():
@@ -475,10 +476,11 @@ def load_generic_run_bot(conn, bot_name: str, prefix: str):
                     try:
                         d = json.loads(s.read_text())
                         balance = float(d.get('final_balance', d.get('final_equity', d.get('total_equity', INITIAL_BALANCE))))
+                        tokens_value = float(d.get('xrp_value_usd', d.get('tokens_value', d.get('position_value', 0))) or 0)
                     except Exception:
                         pass
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
-    upsert_status(conn, bot_name, is_running=running, balance=balance, pnl_day=0, pnl_week=0, tokens=0)
+    upsert_status(conn, bot_name, is_running=running, balance=balance, pnl_day=0, pnl_week=0, tokens=round(tokens_value, 2))
 
 
 def main():
