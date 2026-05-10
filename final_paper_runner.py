@@ -136,6 +136,13 @@ def run() -> dict:
 #         else:
 #             status['notes'].append(f'turtle failed: {cp5.stderr.strip()[:150]}')
 
+    # 5b. SolPullbackBot — pullback en SOL/USDT con RSI/ATR/EMA (4h, datos Binance)
+    out5b = POLY_RUNS_DIR / f'sol_pb_{ts}'
+    cmd5b = [PYTHON, str(ROOT / 'sol_pullback_bot.py'),
+             '--output-dir', str(out5b), '--limit', '200']
+    s5b = run_bot(cmd5b, 'sol_pb', 'final_balance', status)
+    if s5b: status['sol_pb_summary'] = s5b
+
     # 6. XRP Grid Bot — cuadrícula dinámica asistida por IA
     xrp_feed = ROOT / 'runtime/live/XRPUSDT_5m.csv'
     if xrp_feed.exists():

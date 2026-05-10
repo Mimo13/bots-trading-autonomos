@@ -15,7 +15,7 @@ app=FastAPI(title='Bots Trading Dashboard')
 app.mount('/static', StaticFiles(directory=str(ROOT/'frontend')), name='static')
 
 BOT_META = {
-    'fabian': {'label': 'FabiánPullback', 'short': 'Fabián cTrader', 'order': 10, 'family': 'forex'},
+    'sol_pb': {'label': 'SolPullbackBot', 'short': 'SolPullback', 'order': 10, 'family': 'crypto'},
     'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', 'order': 20, 'family': 'crypto'},
     'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
     'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet', 'ai': True},
@@ -295,7 +295,7 @@ def weekly_compare():
              coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
-        and bot_name <> 'poly'
+        and bot_name not in ('poly','fabian')
       group by bot_name
     ''')
 
@@ -304,7 +304,7 @@ def weekly_compare():
         agg[r[0]]={'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])}
 
     # Include all bots from BOT_META except poly, and those in bot_status
-    bots_rows=q("select bot_name from bot_status where bot_name <> 'poly' order by bot_name")
+    bots_rows=q("select bot_name from bot_status where bot_name not in ('poly','fabian') order by bot_name")
     bot_names=[r[0] for r in bots_rows]
     for b in BOT_META.keys():
         if b != 'poly' and b not in bot_names:
@@ -336,10 +336,12 @@ def _run_pfolio(cfg_path: str = ''):
 
 @app.post('/api/bots/{bot}/start')
 def start(bot:str):
-    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','pfolio':'pfolio','tv_sol':'tv_sol'}.get(bot)
-    if bot=='fabian':
-        subprocess.run(['open','-ga','/Applications/cTrader.app'])
-        subprocess.Popen([str(ROOT/'run_bridge_cycle.sh')], cwd=ROOT)
+    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','pfolio':'pfolio','tv_sol':'tv_sol'}.get(bot)
+    if bot=='sol_pb':
+        # SolPullbackBot: arranca con datos de Binance
+        subprocess.Popen([str(ROOT/'.venv/bin/python'), str(ROOT/'sol_pullback_bot.py'),
+                         '--output-dir', str(ROOT/'runtime/polymarket/runs/sol_pb_'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))],
+                         cwd=ROOT)
     elif bot=='pfolio':
         _run_pfolio()
     # Mark as running in DB immediately
@@ -358,11 +360,11 @@ def start(bot:str):
 
 @app.post('/api/bots/{bot}/stop')
 def stop(bot:str):
-    if bot=='fabian':
-        subprocess.run(['pkill','-f','cTrader'])
+    if bot=='sol_pb':
+        subprocess.run(['pkill','-f','sol_pullback_bot'])
     elif bot=='pfolio':
         subprocess.run(['pkill','-f','polymarket_portfolio_bot'])
-    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro',
+    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabianpro':'fabianpro',
                'poly':'poly','pfolio':'pfolio','tv_sol':'tv_sol',
                'fabian_live_pullback':'fabian_live_pullback','fabian_live_pro':'fabian_live_pro','tv_sol':'tv_sol'}.get(bot)
     if db_name:
@@ -377,7 +379,7 @@ def stop(bot:str):
 @app.get('/api/bots')
 def bots_list():
     """List all registered bots dynamically."""
-    rows = q("select bot_name, is_running, mode from bot_status where bot_name <> 'poly' order by bot_name")
+    rows = q("select bot_name, is_running, mode from bot_status where bot_name not in ('poly','fabian') order by bot_name")
     bots=[]
     for r in rows:
         m=_meta(r[0])

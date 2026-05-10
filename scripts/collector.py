@@ -103,12 +103,68 @@ def load_poly(conn):
                   pnl_day=pnl_day, pnl_week=pnl_week, tokens=0)
 
 
-def load_fabian(conn):
-    """cTrader original (C# bot) — solo señal, sin trades reales."""
-    signal = ROOT / 'runtime/tradingview/ctrader_signal.csv'
-    running = signal.exists() and (datetime.now(timezone.utc).timestamp() - signal.stat().st_mtime) < 600
-    upsert_status(conn, 'fabian', is_running=running, balance=INITIAL_BALANCE,
-                  pnl_day=0, pnl_week=0, tokens=0)
+# ARCHIVADO: FabiánPullback C# (cTrader) — código guardado, fuera del dashboard
+# def load_fabian(conn):
+#     """cTrader original (C# bot) — solo señal, sin trades reales."""
+#     signal = ROOT / 'runtime/tradingview/ctrader_signal.csv'
+#     running = signal.exists() and (datetime.now(timezone.utc).timestamp() - signal.stat().st_mtime) < 600
+#     upsert_status(conn, 'fabian', is_running=running, balance=INITIAL_BALANCE,
+#                   pnl_day=0, pnl_week=0, tokens=0)
+
+
+def load_sol_pb(conn):
+    """SolPullbackBot — pullback en SOL/USDT con RSI/ATR/EMA en 4h."""
+    runs = ROOT / 'runtime/polymarket/runs'
+    if runs.exists():
+        for entry in runs.glob('sol_pb_*'):
+            tl = entry / 'trades_log.csv'
+            if tl.exists():
+                with tl.open() as f:
+                    for x in csv.DictReader(f):
+                        ts_str = x.get('ts', '')
+                        try:
+                            ts = parse_ts(ts_str)
+                        except Exception:
+                            continue
+                        pnl = float(x.get('pnl', 0) or 0)
+                        action = x.get('action', '').upper()
+                        symbol = x.get('symbol', 'SOLUSDT')
+                        qty = float(x.get('qty', 0) or 0)
+                        entry_price = float(x.get('entry', 0) or 0)
+                        
+                        if action in ('BUY',):
+                            side = 'BUY'; result = ''
+                        elif action in ('SELL',):
+                            side = 'SELL'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                        else:
+                            continue
+                        
+                        if pnl == 0 and result == '':
+                            continue  # entry rows
+                        
+                        usd_amount = abs(pnl) if pnl != 0 else (qty * entry_price) if qty > 0 else 0
+                        
+                        raw = dict(x)
+                        if 'symbol' not in raw or not raw.get('symbol'):
+                            raw['symbol'] = symbol
+                        
+                        conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
+                        values('sol_pb',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
+                                     [ts, side, qty, usd_amount, pnl, result, json.dumps(raw)])
+    
+    # Balance desde BD
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='sol_pb'")
+    total_pnl = float(r.fetchone()[0])
+    balance = round(INITIAL_BALANCE + total_pnl, 2)
+    
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='sol_pb' and ts >= current_date")
+    day_pnl = float(r.fetchone()[0])
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='sol_pb' and ts >= current_date - interval '7 days'")
+    week_pnl = float(r.fetchone()[0])
+    
+    running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
+    upsert_status(conn, 'sol_pb', is_running=running, balance=balance,
+                  pnl_day=round(day_pnl, 2), pnl_week=round(week_pnl, 2), tokens=0)
 
 
 def load_pfolio(conn):
@@ -381,7 +437,7 @@ def main():
     with psycopg.connect(DB_URL, autocommit=True) as conn:
         ensure_schema(conn)
         load_poly(conn)
-        load_fabian(conn)
+        load_sol_pb(conn)
         load_pfolio(conn)
         load_fabian_py(conn)
         load_fabianpro(conn)
