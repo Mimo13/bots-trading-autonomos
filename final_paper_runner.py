@@ -92,17 +92,12 @@ def run() -> dict:
     if s: status['poly_summary'] = s
     if tmp.exists(): tmp.unlink()
 
-    # 2. PolyPortfolioPaper — cartera
-    cfg2 = json.loads(PORTFOLIO_CONFIG.read_text())
-    cfg2['initial_balance'] = INITIAL_BALANCE
-    tmp2 = POLY_RUNS_DIR / f'_cfg_port_{ts}.json'
-    tmp2.write_text(json.dumps(cfg2))
-    out2 = POLY_RUNS_DIR / f'portfolio_{ts}'
-    cmd2 = [PYTHON, str(ROOT / 'polymarket_portfolio_bot.py'),
-            '--input', str(poly_input), '--config', str(tmp2), '--output-dir', str(out2)]
-    s2 = run_bot(cmd2, 'portfolio', 'final_balance', status)
-    if s2: status['portfolio_summary'] = s2
-    if tmp2.exists(): tmp2.unlink()
+    # 2. PolyPortfolioPaper — ARCHIVADO 2026-05-10 (señales fake, bajo rendimiento)
+    # out2 = POLY_RUNS_DIR / f'portfolio_{ts}'
+    # cmd2 = [PYTHON, str(ROOT / 'polymarket_portfolio_bot.py'),
+    #         '--input', str(poly_input), '--config', str(tmp2), '--output-dir', str(out2)]
+    # s2 = run_bot(cmd2, 'portfolio', 'final_balance', status)
+    # if s2: status['portfolio_summary'] = s2
 
     # 3. FabiánPullback Python — estructura/ruptura
     cfg3 = json.loads(FABIAN_CONFIG.read_text())

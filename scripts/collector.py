@@ -488,7 +488,7 @@ def main():
         ensure_schema(conn)
         load_poly(conn)
         load_sol_pb(conn)
-        load_pfolio(conn)
+        # load_pfolio(conn)  # ARCHIVADO 2026-05-10: señales fake, 156 posiciones fantasma
         load_fabian_py(conn)
         load_fabianpro(conn)
         load_generic_run_bot(conn, 'xrp_grid', 'xrp_grid')
