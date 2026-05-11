@@ -241,7 +241,8 @@ def find_entry_zone(structure: str, breakout_idx: int, candles: List[Candle]) ->
 
 def build_trade_plan(structure: str, entry_zone: Tuple[float, float],
                      structural_level: float, body_avg: float, cfg: FabianConfig,
-                     candle: Candle, session: str, expiry_idx: int) -> Optional[TradePlan]:
+                     candle: Candle, session: str, expiry_idx: int,
+                     current_balance: Optional[float] = None) -> Optional[TradePlan]:
     """Build trade plan with SL, TP, and position size."""
     entry, zone_edge = entry_zone
     buffer = cfg.sl_buffer_pips * 0.0001 if candle.close > 10 else cfg.sl_buffer_pips * 0.001
@@ -272,10 +273,16 @@ def build_trade_plan(structure: str, entry_zone: Tuple[float, float],
         return None
 
     # Position sizing: risk X% of balance = position * |entry - SL|
-    # So position = (balance * risk%) / |entry - SL|
-    live_balance = cfg.initial_balance
+    # So raw position (tokens) = (balance * risk%) / |entry - SL|
+    # Then capped by available cash for spot (no leverage)
+    live_balance = current_balance if current_balance is not None else cfg.initial_balance
     risk_amount = live_balance * (cfg.risk_percent / 100.0)
-    volume = risk_amount / risk_pips if risk_pips > 0 else 0
+    raw_volume = risk_amount / risk_pips if risk_pips > 0 else 0
+    
+    # Spot cap: max tokens we can buy with available cash (95% to leave fee buffer)
+    max_notional = live_balance * 0.95
+    max_volume = max_notional / entry if entry > 0 else raw_volume
+    volume = min(raw_volume, max_volume)
     
     return TradePlan(
         action=action, entry=entry, sl=sl, tp=tp,
@@ -547,7 +554,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                             # Build trade plan
                             plan = build_trade_plan(
                                 structure, zone, broken_level, body_avg, cfg, c, session,
-                                i + cfg.pending_order_expiry_minutes
+                                i + cfg.pending_order_expiry_minutes,
+                                current_balance=balance
                             )
                             if plan is None:
                                 reason = "INVALID_PLAN"
