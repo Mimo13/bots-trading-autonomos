@@ -53,6 +53,7 @@ class FabianConfig:
     # Behavior
     enable_trailing: bool = True
     enable_break_even_at_1r: bool = True
+    spot_long_only: bool = False  # Paper/live spot mode: disable SELL_STOP/SHORT plans
 
     # Structure
     swing_lookback: int = 3
@@ -519,6 +520,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                 
                 if structure == "RANGE":
                     reason = "RANGE_STRUCTURE"
+                elif cfg.spot_long_only and structure == "BEARISH":
+                    reason = "SPOT_LONG_ONLY_SKIP_BEARISH"
                 else:
                     # Check breakout
                     body_avg = body_avgs[i]

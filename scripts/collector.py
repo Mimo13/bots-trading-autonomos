@@ -35,6 +35,23 @@ def upsert_status(conn, bot, **vals):
           'pnl_week': vals.get('pnl_week', 0), 'tokens': vals.get('tokens', 0)})
 
 
+def comparison_reset_epoch() -> float:
+    """Epoch desde el que empieza la comparativa fresca SolPullback vs FabianSpotLong."""
+    marker = ROOT / 'runtime/polymarket/comparison_reset.json'
+    if not marker.exists():
+        return 0.0
+    try:
+        data = json.loads(marker.read_text())
+        return float(data.get('reset_epoch', 0) or 0)
+    except Exception:
+        return 0.0
+
+
+def is_after_comparison_reset(entry: Path) -> bool:
+    reset = comparison_reset_epoch()
+    return reset <= 0 or entry.stat().st_mtime >= reset
+
+
 def last_bot_balance(prefix: str, default: float = INITIAL_BALANCE) -> float:
     """Lee el final_balance/final_equity del run más reciente del bot."""
     runs_dir = ROOT / 'runtime/polymarket/runs'
@@ -117,6 +134,8 @@ def load_sol_pb(conn):
     runs = ROOT / 'runtime/polymarket/runs'
     if runs.exists():
         for entry in runs.glob('sol_pb_*'):
+            if not is_after_comparison_reset(entry):
+                continue
             tl = entry / 'trades_log.csv'
             if tl.exists():
                 with tl.open() as f:
@@ -370,6 +389,65 @@ def load_fabian_py(conn):
                   pnl_day=round(day_pnl, 2), pnl_week=round(week_pnl, 2), tokens=0)
 
 
+def load_fabian_spot_long(conn):
+    """FabianSpotLong — FabiánPullback en modo spot long-only para comparativa paper."""
+    runs = ROOT / 'runtime/polymarket/runs'
+    if runs.exists():
+        for entry in runs.glob('fabian_spot_long_*'):
+            if not is_after_comparison_reset(entry):
+                continue
+            tl = entry / 'trades_log.csv'
+            if tl.exists():
+                with tl.open() as f:
+                    for x in csv.DictReader(f):
+                        ts_str = x.get('ts', '')
+                        try:
+                            ts = parse_ts(ts_str)
+                        except Exception:
+                            continue
+                        pnl = float(x.get('pnl', 0) or 0)
+                        action = x.get('action', '').upper()
+                        qty = float(x.get('qty', 0) or 0)
+                        entry_price = float(x.get('entry_price', x.get('entry', 0)) or 0)
+                        exit_price = float(x.get('exit_price', x.get('exit', 0)) or 0)
+
+                        if action in ('BUY_STOP', 'BUY'):
+                            side = 'BUY'; result = ''
+                            usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
+                        elif action == 'SELL':
+                            side = 'SELL'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
+                        else:
+                            # Long-only: ignore SHORT/COVER if an old/misconfigured run ever appears.
+                            continue
+
+                        if 'symbol' not in x or not x.get('symbol'):
+                            x['symbol'] = 'SOLUSDT'
+                        x['spot_long_only'] = True
+                        conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
+                        values('fabian_spot_long',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
+                                     [ts, side, qty, usd, pnl, result, json.dumps(x)])
+
+                        if action == 'SELL':
+                            conn.execute(
+                                """update trades set result='ENTRY_PAIRED' where ctid in (
+                                    select ctid from trades where bot_name='fabian_spot_long' and side='BUY' and result='' and ts < %s order by ts desc limit 1
+                                )""",
+                                [ts]
+                            )
+
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabian_spot_long'")
+    total_pnl = float(r.fetchone()[0])
+    balance = round(INITIAL_BALANCE + total_pnl, 2)
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabian_spot_long' and ts >= current_date")
+    day_pnl = float(r.fetchone()[0])
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='fabian_spot_long' and ts >= current_date - interval '7 days'")
+    week_pnl = float(r.fetchone()[0])
+    running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
+    upsert_status(conn, 'fabian_spot_long', is_running=running, balance=balance,
+                  pnl_day=round(day_pnl, 2), pnl_week=round(week_pnl, 2), tokens=0)
+
+
 def load_turtle(conn):
     """TurtleBot — Donchian breakout."""
     runs = ROOT / 'runtime/polymarket/runs'
@@ -490,6 +568,7 @@ def main():
         load_sol_pb(conn)
         load_pfolio(conn)  # reactivado 2026-05-10: RSI-based
         load_fabian_py(conn)
+        load_fabian_spot_long(conn)
         load_fabianpro(conn)
         load_generic_run_bot(conn, 'xrp_grid', 'xrp_grid')
         load_generic_run_bot(conn, 'tv_sol', 'tv_')

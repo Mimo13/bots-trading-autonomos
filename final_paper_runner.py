@@ -17,6 +17,7 @@ POLY_ENRICHED = ROOT / 'runtime/polymarket/polymarket_input_enriched.csv'
 POLY_CONFIG = ROOT / 'polymarket_paper_config.example.json'
 PORTFOLIO_CONFIG = ROOT / 'polymarket_portfolio_config.json'
 FABIAN_CONFIG = ROOT / 'fabian_config_crypto.json'
+FABIAN_SPOT_LONG_CONFIG = ROOT / 'fabian_spot_long_config.json'
 FABIANPRO_CONFIG = ROOT / 'fabian_pro_config.json'
 TURTLE_CONFIG = ROOT / 'turtle_bot_config.json'
 POLY_RUNS_DIR = ROOT / 'runtime/polymarket/runs'
@@ -116,6 +117,19 @@ def run() -> dict:
     s3 = run_bot(cmd3, 'fabian', 'final_balance', status)
     if s3: status['fabian_summary'] = s3
     if tmp3.exists(): tmp3.unlink()
+
+    # 3b. FabianSpotLong — Fabián adaptado a spot long-only para comparar con SolPullback
+    cfg3b = json.loads(FABIAN_SPOT_LONG_CONFIG.read_text())
+    cfg3b['initial_balance'] = INITIAL_BALANCE
+    cfg3b['spot_long_only'] = True
+    tmp3b = POLY_RUNS_DIR / f'_cfg_fabian_spot_long_{ts}.json'
+    tmp3b.write_text(json.dumps(cfg3b))
+    out3b = POLY_RUNS_DIR / f'fabian_spot_long_{ts}'
+    cmd3b = [PYTHON, str(ROOT / 'fabian_pullback_bot.py'),
+             '--input', str(poly_input), '--config', str(tmp3b), '--output-dir', str(out3b)]
+    s3b = run_bot(cmd3b, 'fabian_spot_long', 'final_balance', status)
+    if s3b: status['fabian_spot_long_summary'] = s3b
+    if tmp3b.exists(): tmp3b.unlink()
 
     # 4. FabianPro — estructura mejorada + ADX/ATR + cartera
     cfg4 = json.loads(FABIANPRO_CONFIG.read_text())

@@ -17,6 +17,7 @@ app.mount('/static', StaticFiles(directory=str(ROOT/'frontend')), name='static')
 BOT_META = {
     'sol_pb': {'label': 'SolPullbackBot', 'short': 'SolPullback', 'order': 10, 'family': 'crypto'},
     'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', 'order': 20, 'family': 'crypto'},
+    'fabian_spot_long': {'label': 'FabianSpotLong', 'short': 'FabianSpot', 'order': 25, 'family': 'crypto', 'compare': True},
     'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
     # ARCHIVADO: 'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet'},
     # ARCHIVADO: 'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet'},
@@ -319,6 +320,28 @@ def weekly_compare():
     items.sort(key=lambda x: (x.get('order', _meta(x['bot_name']).get('order',999))))
     return {'items':items}
 
+
+@app.get('/api/weekly-compare-candidates')
+def weekly_compare_candidates():
+    candidate_bots = ['sol_pb', 'fabian_spot_long']
+    rows=q('''
+      select bot_name,
+             coalesce(sum(pnl_usd),0) as pnl_week,
+             count(*) filter (where result in ('WIN','LOSS')) as trades,
+             coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
+      from trades
+      where ts >= now() - interval '7 day'
+        and bot_name = any(%s)
+      group by bot_name
+    ''',[candidate_bots])
+    agg={r[0]:{'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])} for r in rows}
+    items=[]
+    for b in candidate_bots:
+        m=_meta(b)
+        a=agg.get(b, {'pnl_week':0,'trades':0,'win_rate':0})
+        items.append({'bot_name':b, 'label':m['label'], 'short':m['short'], **a})
+    return {'items':items}
+
 def _run_pfolio(cfg_path: str = ''):
     """Run portfolio bot with enriched CSV, output to portfolio_ timestamp dir."""
     poly_input = ROOT / 'runtime/polymarket/polymarket_input_enriched.csv'
@@ -336,7 +359,7 @@ def _run_pfolio(cfg_path: str = ''):
 
 @app.post('/api/bots/{bot}/start')
 def start(bot:str):
-    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','tv_sol':'tv_sol'}.get(bot)
+    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabian_spot_long':'fabian_spot_long','fabianpro':'fabianpro','poly':'poly','tv_sol':'tv_sol'}.get(bot)
     # pfolio archivado — ver polymarket_portfolio_bot.py
     if bot=='sol_pb':
         # SolPullbackBot: arranca con datos de Binance
@@ -367,7 +390,7 @@ def stop(bot:str):
     # pfolio archivado
     elif bot=='pfolio':
         pass
-    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabianpro':'fabianpro',
+    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabian_spot_long':'fabian_spot_long','fabianpro':'fabianpro',
                'poly':'poly','tv_sol':'tv_sol',
                'fabian_live_pullback':'fabian_live_pullback','fabian_live_pro':'fabian_live_pro','tv_sol':'tv_sol'}.get(bot)
     if db_name:

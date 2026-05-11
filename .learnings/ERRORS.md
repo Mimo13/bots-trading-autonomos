@@ -107,3 +107,31 @@ En `load_fabianpro()` y `load_fabian_py()`: añadir `if pnl == 0 and result == '
 - Source: user_feedback
 - Related Files: scripts/collector.py
 - Tags: fabian, ghost_trades, collector
+
+## [ERR-20260511-001] collector_schema_unique_indexes
+
+**Logged**: 2026-05-11T10:03:00+02:00
+**Priority**: medium
+**Status**: fixed
+**Area**: backend
+
+### Summary
+Collector failed on `positions_open ... on conflict(bot_name,symbol,side)` because an existing DB table lacked the unique constraint declared in `schema.sql`.
+
+### Error
+```text
+psycopg.errors.InvalidColumnReference: there is no unique or exclusion constraint matching the ON CONFLICT specification
+```
+
+### Context
+- Occurred while validating collector after adding FabianSpotLong.
+- Root cause: `CREATE TABLE IF NOT EXISTS ... unique(...)` does not retrofit constraints onto older tables.
+
+### Suggested Fix
+Use explicit `CREATE UNIQUE INDEX IF NOT EXISTS` statements after table creation for conflict targets that must exist on upgraded databases.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `sql/schema.sql`, `scripts/collector.py`
+
+---
