@@ -9,6 +9,18 @@ import psycopg
 ROOT = Path('/Users/mimo13/bots-trading-autonomos-runtime')
 DB_URL = os.getenv('DATABASE_URL', 'postgresql:///bots_dashboard')
 INITIAL_BALANCE = 100.0
+FEE_RATE = 0.0005  # 0.05% por leg — mejor tasa entre Binance (0.1%) y MEXC (0% maker / 0.05% taker)
+
+
+def apply_fees(qty, entry_price, exit_price, raw_pnl):
+    """Calcula gastos de entrada+salida y devuelve (net_pnl, total_fee).
+    Solo aplica si qty está disponible (>0)."""
+    if qty > 0 and entry_price > 0 and exit_price > 0:
+        entry_fee = round(qty * entry_price * FEE_RATE, 2)
+        exit_fee = round(qty * exit_price * FEE_RATE, 2)
+        total_fee = entry_fee + exit_fee
+        return round(raw_pnl - total_fee, 2), total_fee
+    return round(raw_pnl, 2), 0.0
 
 
 def parse_ts(s: str):
@@ -181,8 +193,12 @@ def load_sol_pb(conn):
                             usd_amount = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
                         elif action == 'SELL':
                             side = 'SELL'
-                            result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            net_pnl, total_fee = apply_fees(qty, entry_price, exit_price, pnl)
+                            result = 'WIN' if net_pnl > 0 else 'LOSS' if net_pnl < 0 else 'FLAT'
                             usd_amount = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
+                            # Guardar fee en raw para depuración
+                            x['fee_usd'] = total_fee
+                            pnl = net_pnl
                         else:
                             continue
                         
@@ -263,9 +279,10 @@ def load_pfolio(conn):
                 latest_summary = json.loads(s.read_text())
     
     if latest_summary:
-        balance = float(latest_summary.get('final_balance', INITIAL_BALANCE))
+        final_balance = float(latest_summary.get('final_balance', INITIAL_BALANCE))
         position_qty = float(latest_summary.get('final_position_qty', 0))
         tokens_value = float(latest_summary.get('position_value', 0))
+        balance = round(final_balance - tokens_value, 2)  # cash only
         if position_qty > 0 and tokens_value > 0:
             position_price = tokens_value / position_qty
             # Write wallet tokens for dashboard "Cartera tokens"
@@ -308,14 +325,20 @@ def load_fabianpro(conn):
                             side = 'BUY'; result = ''
                             usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
                         elif action in ('SELL',):
-                            side = 'SELL'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            side = 'SELL'
+                            net_pnl, total_fee = apply_fees(qty, entry_price, exit_price, pnl)
+                            result = 'WIN' if net_pnl > 0 else 'LOSS' if net_pnl < 0 else 'FLAT'
                             usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
+                            x['fee_usd'] = total_fee; pnl = net_pnl
                         elif action in ('SHORT',):
                             side = 'SHORT'; result = ''
                             usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
                         elif action in ('COVER',):
-                            side = 'COVER'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            side = 'COVER'
+                            net_pnl, total_fee = apply_fees(qty, entry_price, exit_price, pnl)
+                            result = 'WIN' if net_pnl > 0 else 'LOSS' if net_pnl < 0 else 'FLAT'
                             usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
+                            x['fee_usd'] = total_fee; pnl = net_pnl
                         else:
                             continue
                         
@@ -378,11 +401,17 @@ def load_fabian_py(conn):
                             side = 'SHORT'; result = ''
                             usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
                         elif action in ('SELL',):
-                            side = 'SELL'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            side = 'SELL'
+                            net_pnl, total_fee = apply_fees(qty, entry_price, exit_price, pnl)
+                            result = 'WIN' if net_pnl > 0 else 'LOSS' if net_pnl < 0 else 'FLAT'
                             usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
+                            x['fee_usd'] = total_fee; pnl = net_pnl
                         elif action in ('COVER',):
-                            side = 'COVER'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            side = 'COVER'
+                            net_pnl, total_fee = apply_fees(qty, entry_price, exit_price, pnl)
+                            result = 'WIN' if net_pnl > 0 else 'LOSS' if net_pnl < 0 else 'FLAT'
                             usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
+                            x['fee_usd'] = total_fee; pnl = net_pnl
                         else:
                             continue
                         
@@ -442,8 +471,11 @@ def load_fabian_spot_long(conn):
                             side = 'BUY'; result = ''
                             usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
                         elif action == 'SELL':
-                            side = 'SELL'; result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                            side = 'SELL'
+                            net_pnl, total_fee = apply_fees(qty, entry_price, exit_price, pnl)
+                            result = 'WIN' if net_pnl > 0 else 'LOSS' if net_pnl < 0 else 'FLAT'
                             usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
+                            x['fee_usd'] = total_fee; pnl = net_pnl
                         else:
                             # Long-only: ignore SHORT/COVER if an old/misconfigured run ever appears.
                             continue
@@ -580,8 +612,9 @@ def load_generic_run_bot(conn, bot_name: str, prefix: str):
                     latest_mtime = s.stat().st_mtime
                     try:
                         d = json.loads(s.read_text())
-                        balance = float(d.get('final_balance', d.get('final_equity', d.get('total_equity', INITIAL_BALANCE))))
+                        raw_balance = float(d.get('final_balance', d.get('final_equity', d.get('total_equity', INITIAL_BALANCE))))
                         tokens_value = float(d.get('xrp_value_usd', d.get('tokens_value', d.get('position_value', 0))) or 0)
+                        balance = round(raw_balance - tokens_value, 2)  # cash only
                     except Exception:
                         pass
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
