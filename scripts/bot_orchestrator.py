@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Paper-only bot fleet orchestrator.
+"""Paper-only bot fleet orchestrator — v2 with multi-symbol regime + auto-pause.
 
 This module is intentionally isolated: it reads market/feed + bot metrics,
-produces recommendations and an audit trail, and by default does NOT mutate
-running bots. Set orchestrator_config.json:apply_actions=true only after paper
-validation.
+produces recommendations and an audit trail, and can auto-pause unhealthy bots
+(apply_actions=true). Set orchestrator_config.json:apply_actions=true only after
+paper validation.
 """
 from __future__ import annotations
 
@@ -59,7 +59,6 @@ def read_closes(symbol: str, limit: int = 180) -> list[float]:
     with path.open(newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # data_fetcher commonly uses close; tolerate uppercase/positional-ish exports.
             c = row.get("close") or row.get("Close") or row.get("c")
             if c is None and row:
                 vals = list(row.values())
@@ -73,6 +72,9 @@ def read_closes(symbol: str, limit: int = 180) -> list[float]:
 
 def pct_change(a: float, b: float) -> float:
     return (b / a - 1.0) if a else 0.0
+
+
+REGIME_PRIORITY = {"risk_off": 0, "bear": 1, "sideways": 2, "bull": 3, "unknown": 4}
 
 
 def detect_regime(symbol: str) -> dict[str, Any]:
@@ -130,6 +132,32 @@ def detect_regime(symbol: str) -> dict[str, Any]:
     }
 
 
+def merge_regimes(regimes: list[dict[str, Any]]) -> dict[str, Any]:
+    """Merge multiple symbol regimes — most conservative wins."""
+    if not regimes:
+        return {"regime": "unknown", "confidence": 0.0, "reason": "no_feeds", "symbols": []}
+
+    # Most conservative regime wins
+    merged = min(regimes, key=lambda r: REGIME_PRIORITY.get(r.get("regime", "unknown"), 99))
+    # Average confidence
+    avg_conf = statistics.fmean([r.get("confidence", 0.0) for r in regimes]) if len(regimes) > 1 else merged["confidence"]
+
+    return {
+        "regime": merged["regime"],
+        "confidence": round(avg_conf, 3),
+        "reason": f"multi_symbol: most_conservative_is_{merged['regime']}",
+        "symbols": [
+            {
+                "symbol": r["symbol"],
+                "regime": r["regime"],
+                "confidence": r["confidence"],
+                "reason": r.get("reason", ""),
+            }
+            for r in regimes
+        ],
+    }
+
+
 def db_fetch(sql: str, params: list[Any] | None = None) -> list[tuple]:
     if psycopg is None:
         return []
@@ -140,6 +168,21 @@ def db_fetch(sql: str, params: list[Any] | None = None) -> list[tuple]:
                 return cur.fetchall()
     except Exception:
         return []
+
+
+def db_consecutive_losses(bot: str, limit: int = 20) -> int:
+    """Count consecutive LOSS rows from most recent trade backwards."""
+    rows = db_fetch(
+        "select result from trades where bot_name=%s and result in ('WIN','LOSS') order by ts desc limit %s",
+        [bot, limit],
+    )
+    streak = 0
+    for r in rows:
+        if r[0] == "LOSS":
+            streak += 1
+        else:
+            break
+    return streak
 
 
 def db_metrics(bot: str) -> dict[str, Any]:
@@ -205,7 +248,9 @@ def latest_summary(prefix: str) -> dict[str, Any]:
     }
 
 
-def score_bot(bot_cfg: dict[str, Any], regime: str, metrics: dict[str, Any], risk_cfg: dict[str, Any]) -> dict[str, Any]:
+def score_bot(
+    bot_cfg: dict[str, Any], regime: str, metrics: dict[str, Any], risk_cfg: dict[str, Any], auto_pause: dict[str, Any]
+) -> dict[str, Any]:
     perf = metrics.get("performance", {})
     status = metrics.get("status", {})
     summary = metrics.get("latest_summary", {})
@@ -221,16 +266,20 @@ def score_bot(bot_cfg: dict[str, Any], regime: str, metrics: dict[str, Any], ris
     regime_match = regime in bot_cfg.get("regimes", [])
     test_candidate = bool(bot_cfg.get("test_candidate"))
 
+    # Consecutive losses
+    consecutive_losses = metrics.get("_consecutive_losses", 0)
+
     score = 0.0
     score += 42 if regime_match else -30
     score += min(28, max(-18, (wr - 0.45) * 80))
     score += min(18, max(-18, pnl7 * 3))
     score += min(8, max(-8, pnl24 * 4))
     score -= min(18, dd * 1.2)
+    score -= min(20, consecutive_losses * 3)  # big penalty for loss streak
     if closed < int(risk_cfg.get("min_closed_trades_for_confidence", 5)):
         score -= 8
     if test_candidate:
-        score -= 5  # visible as sandbox, not preferred over real tracked bots
+        score -= 5
 
     reason_codes: list[str] = []
     if regime_match:
@@ -249,9 +298,20 @@ def score_bot(bot_cfg: dict[str, Any], regime: str, metrics: dict[str, Any], ris
         reason_codes.append("DRAWDOWN_HIGH")
     if closed < int(risk_cfg.get("min_closed_trades_for_confidence", 5)):
         reason_codes.append("LOW_SAMPLE")
+    if consecutive_losses > 0:
+        reason_codes.append(f"LOSS_STREAK_{consecutive_losses}")
+    if consecutive_losses >= auto_pause.get("max_consecutive_losses", 5):
+        reason_codes.append("CONSECUTIVE_LOSS_LIMIT")
+    # Check win rate vs min threshold
+    min_wr = auto_pause.get("min_win_rate", 0.30)
+    min_trades_wr = auto_pause.get("min_trades_for_wr_check", 10)
+    if closed >= min_trades_wr and wr < min_wr:
+        reason_codes.append(f"WR_BELOW_THRESHOLD_{min_wr}")
 
     action = "MONITOR"
     if regime == "risk_off" or "DRAWDOWN_HIGH" in reason_codes:
+        action = "PAUSE"
+    elif "CONSECUTIVE_LOSS_LIMIT" in reason_codes or "WR_BELOW_THRESHOLD" in reason_codes:
         action = "PAUSE"
     elif score >= 48 and bot_cfg.get("can_auto_start"):
         action = "RUN"
@@ -280,6 +340,7 @@ def score_bot(bot_cfg: dict[str, Any], regime: str, metrics: dict[str, Any], ris
             "losses": int(perf.get("losses") or 0) if use_db_perf else int(summary.get("losses") or 0),
             "win_rate": round(wr, 4),
             "max_drawdown_pct": dd,
+            "consecutive_losses": consecutive_losses,
             "latest_summary_at": summary.get("updated_at"),
         },
     }
@@ -305,7 +366,7 @@ def portfolio_guardrails(items: list[dict[str, Any]], cfg: dict[str, Any]) -> di
 
 
 def apply_logical_actions(items: list[dict[str, Any]], cfg: dict[str, Any]) -> list[dict[str, Any]]:
-    # Safe logical status only; no pkill, no real orders, no external effects.
+    """Apply actions to bot_status in DB. Only affects paper bots, no pkill."""
     applied: list[dict[str, Any]] = []
     if not cfg.get("apply_actions", False) or psycopg is None:
         return applied
@@ -318,10 +379,11 @@ def apply_logical_actions(items: list[dict[str, Any]], cfg: dict[str, Any]) -> l
                     if not bcfg:
                         continue
                     action = item["recommended_action"]
-                    if action == "RUN" and bcfg.get("can_auto_start"):
+                    current_running = item.get("is_running", False)
+                    if action == "RUN" and bcfg.get("can_auto_start") and not current_running:
                         cur.execute("update bot_status set is_running=true, updated_at=now() where bot_name=%s", [item["name"]])
                         applied.append({"bot": item["name"], "action": "set_running_true"})
-                    elif action == "PAUSE" and bcfg.get("can_auto_pause"):
+                    elif action == "PAUSE" and bcfg.get("can_auto_pause") and current_running:
                         cur.execute("update bot_status set is_running=false, updated_at=now() where bot_name=%s", [item["name"]])
                         applied.append({"bot": item["name"], "action": "set_running_false"})
     except Exception as e:
@@ -338,17 +400,25 @@ def run() -> dict[str, Any]:
         (STATE_DIR / "state.json").write_text(json.dumps(state, indent=2, ensure_ascii=False))
         return state
 
-    regime = detect_regime(cfg.get("base_symbol", "SOLUSDT"))
+    # Multi-symbol regime detection
+    symbols = cfg.get("symbols", [cfg.get("base_symbol", "SOLUSDT")])
+    regimes = [detect_regime(sym) for sym in symbols]
+    merged = merge_regimes(regimes)
+    overall_regime = merged["regime"]
+
+    auto_pause = cfg.get("auto_pause", {})
+
     items: list[dict[str, Any]] = []
     for bot_cfg in cfg.get("bots", []):
         m = db_metrics(bot_cfg["name"])
         m["latest_summary"] = latest_summary(bot_cfg.get("prefix", bot_cfg["name"]))
-        items.append(score_bot(bot_cfg, regime["regime"], m, cfg.get("risk", {})))
+        m["_consecutive_losses"] = db_consecutive_losses(bot_cfg["name"], limit=20)
+        items.append(score_bot(bot_cfg, overall_regime, m, cfg.get("risk", {}), auto_pause))
 
     guard = portfolio_guardrails(items, cfg)
-    if guard["risk_mode"] or regime["regime"] == "risk_off":
+    if guard["risk_mode"] or overall_regime == "risk_off":
         for item in items:
-            if not item.get("test_candidate") and "PAUSE" in ("PAUSE",):
+            if not item.get("test_candidate") and item["recommended_action"] != "PAUSE":
                 item["recommended_action"] = "PAUSE"
                 if "PORTFOLIO_GUARD" not in item["reason_codes"]:
                     item["reason_codes"].append("PORTFOLIO_GUARD")
@@ -361,19 +431,19 @@ def run() -> dict[str, Any]:
         "paper_only": bool(cfg.get("paper_only", True)),
         "apply_actions": bool(cfg.get("apply_actions", False)),
         "ts": ts,
-        "regime": regime,
+        "regime": merged,
         "guardrails": guard,
         "best_candidate": best,
         "bots": items,
         "applied_actions": applied,
         "summary": (
-            f"Régimen {regime['regime']} ({regime['confidence']}). "
+            f"Régimen {overall_regime} ({merged['confidence']}) multi-symbol. "
             f"Mejor candidato: {best['label']} -> {best['recommended_action']}" if best else "Sin candidatos"
         ),
     }
     (STATE_DIR / "state.json").write_text(json.dumps(state, indent=2, ensure_ascii=False))
     with (STATE_DIR / "decisions.jsonl").open("a", encoding="utf-8") as f:
-        f.write(json.dumps({"ts": ts, "regime": regime, "guardrails": guard, "bots": items[:8]}, ensure_ascii=False) + "\n")
+        f.write(json.dumps({"ts": ts, "regime": merged, "guardrails": guard, "bots": items[:8]}, ensure_ascii=False) + "\n")
     with (STATE_DIR / "orchestrator.log").open("a", encoding="utf-8") as f:
         f.write(f"{ts} {state['summary']} guardrails={guard['violations']} apply={state['apply_actions']}\n")
     return state

@@ -1,13 +1,19 @@
 {
   "enabled": true,
   "paper_only": true,
-  "apply_actions": false,
-  "base_symbol": "SOLUSDT",
+  "apply_actions": true,
+  "symbols": ["SOLUSDT", "BNBUSDC", "XRPUSDT"],
   "risk": {
     "max_portfolio_drawdown_pct": 8.0,
     "max_daily_loss_usd": 10.0,
     "min_win_rate_for_auto_run": 0.45,
     "min_closed_trades_for_confidence": 5
+  },
+  "auto_pause": {
+    "max_consecutive_losses": 5,
+    "max_drawdown_pct_24h": 8.0,
+    "min_win_rate": 0.30,
+    "min_trades_for_wr_check": 10
   },
   "bots": [
     {
@@ -24,6 +30,16 @@
       "name": "fabian_spot_long",
       "label": "FabianSpotLong",
       "prefix": "fabian_spot_long",
+      "style": "structure_trend",
+      "regimes": ["bull", "sideways"],
+      "can_auto_start": true,
+      "can_auto_pause": true,
+      "test_candidate": false
+    },
+    {
+      "name": "bnb_spot_long",
+      "label": "BNB SpotLong",
+      "prefix": "bnb_spot_long",
       "style": "structure_trend",
       "regimes": ["bull", "sideways"],
       "can_auto_start": true,
