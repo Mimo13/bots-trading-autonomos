@@ -165,3 +165,31 @@ Use the entry-zone edge as stop anchor, validate risk direction, include qty in 
 - Related Files: `fabian_pullback_bot.py`, `scripts/collector.py`
 
 ---
+
+## [ERR-20260511-003] shell_loop_pair_parsing
+
+**Logged**: 2026-05-11T13:38:00+02:00
+**Priority**: low
+**Status**: fixed
+**Area**: tests
+
+### Summary
+A quick shell loop for allocation simulations passed strings like `50 50` as one float argument.
+
+### Error
+```text
+argument --initial-usdc: invalid float value: '50 50'
+```
+
+### Context
+- Occurred while testing FabianInventory allocations.
+- Fixed by using colon-separated pairs and shell parameter expansion.
+
+### Suggested Fix
+For ad-hoc parameter grids in shell, use `100:0` and parse with `${pair%:*}` / `${pair#*:}` or use Python loops.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `fabian_inventory_bot.py`
+
+---
