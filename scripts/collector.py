@@ -52,6 +52,27 @@ def is_after_comparison_reset(entry: Path) -> bool:
     return reset <= 0 or entry.stat().st_mtime >= reset
 
 
+def is_ts_after_comparison_reset(ts: datetime) -> bool:
+    reset = comparison_reset_epoch()
+    return reset <= 0 or ts.timestamp() >= reset
+
+
+def fabian_reset_epoch() -> float:
+    marker = ROOT / 'runtime/polymarket/fabian_fix_reset.json'
+    if not marker.exists():
+        return 0.0
+    try:
+        data = json.loads(marker.read_text())
+        return float(data.get('reset_epoch', 0) or 0)
+    except Exception:
+        return 0.0
+
+
+def is_after_fabian_reset(entry: Path) -> bool:
+    reset = fabian_reset_epoch()
+    return reset <= 0 or entry.stat().st_mtime >= reset
+
+
 def last_bot_balance(prefix: str, default: float = INITIAL_BALANCE) -> float:
     """Lee el final_balance/final_equity del run más reciente del bot."""
     runs_dir = ROOT / 'runtime/polymarket/runs'
@@ -144,6 +165,8 @@ def load_sol_pb(conn):
                         try:
                             ts = parse_ts(ts_str)
                         except Exception:
+                            continue
+                        if not is_ts_after_comparison_reset(ts):
                             continue
                         pnl = float(x.get('pnl', 0) or 0)
                         action = x.get('action', '').upper()
@@ -331,6 +354,8 @@ def load_fabian_py(conn):
     now = datetime.now(timezone.utc)
     if runs.exists():
         for entry in runs.glob('fabian_*'):
+            if entry.name.startswith('fabian_spot_long_') or not is_after_fabian_reset(entry):
+                continue
             tl = entry / 'trades_log.csv'
             if tl.exists():
                 with tl.open() as f:
@@ -404,6 +429,8 @@ def load_fabian_spot_long(conn):
                         try:
                             ts = parse_ts(ts_str)
                         except Exception:
+                            continue
+                        if not is_ts_after_comparison_reset(ts):
                             continue
                         pnl = float(x.get('pnl', 0) or 0)
                         action = x.get('action', '').upper()

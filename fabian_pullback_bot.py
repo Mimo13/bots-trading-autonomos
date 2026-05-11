@@ -244,38 +244,38 @@ def build_trade_plan(structure: str, entry_zone: Tuple[float, float],
                      candle: Candle, session: str, expiry_idx: int) -> Optional[TradePlan]:
     """Build trade plan with SL, TP, and position size."""
     entry, zone_edge = entry_zone
-    sl_distance = abs(entry - structural_level)
-    
-    if sl_distance <= 0:
-        return None
-    
-    # SL = structure level + buffer
     buffer = cfg.sl_buffer_pips * 0.0001 if candle.close > 10 else cfg.sl_buffer_pips * 0.001
-    
+
+    # Use the pullback zone edge as the protective stop anchor. The previous
+    # implementation used the broken structure level, which can be on the wrong
+    # side of entry and made the paper simulation count impossible SL hits as wins.
     if structure == "BULLISH":
-        sl = structural_level - buffer
-        tp = entry + sl_distance * cfg.min_rr
-        risk_pips = abs(entry - sl)
-        reward_pips = abs(tp - entry)
+        sl = zone_edge - buffer
+        risk_pips = entry - sl
+        if risk_pips <= 0:
+            return None
+        tp = entry + risk_pips * cfg.min_rr
+        reward_pips = tp - entry
         action = "BUY_STOP"
     else:
-        sl = structural_level + buffer
-        tp = entry - sl_distance * cfg.min_rr
-        risk_pips = abs(sl - entry)
-        reward_pips = abs(entry - tp)
+        sl = zone_edge + buffer
+        risk_pips = sl - entry
+        if risk_pips <= 0:
+            return None
+        tp = entry - risk_pips * cfg.min_rr
+        reward_pips = entry - tp
         action = "SELL_STOP"
-    
+
     rr = reward_pips / risk_pips if risk_pips > 0 else 0
-    
+
     if rr < cfg.min_rr:
         return None
-    
+
     # Position sizing: risk X% of balance = position * |entry - SL|
     # So position = (balance * risk%) / |entry - SL|
-    price = candle.close
     live_balance = cfg.initial_balance
     risk_amount = live_balance * (cfg.risk_percent / 100.0)
-    volume = risk_amount / sl_distance if sl_distance > 0 else 0
+    volume = risk_amount / risk_pips if risk_pips > 0 else 0
     
     return TradePlan(
         action=action, entry=entry, sl=sl, tp=tp,
@@ -323,7 +323,7 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
     
     dec_fields = ["ts", "session", "structure", "action", "reason",
                   "open", "high", "low", "close", "entry", "sl", "tp", "rr", "balance"]
-    tr_fields = ["ts", "action", "entry", "exit", "sl", "tp", "pnl", "rr", "reason"]
+    tr_fields = ["ts", "action", "entry", "exit", "sl", "tp", "pnl", "rr", "reason", "qty"]
     
     balance = cfg.initial_balance
     peak_balance = balance
@@ -398,7 +398,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                         twr.writerow({"ts": c.ts.isoformat(), "action": "BUY",
                                       "entry": round(plan.entry, 6), "exit": "",
                                       "sl": round(plan.sl, 6), "tp": round(plan.tp, 6),
-                                      "pnl": 0.0, "rr": round(plan.rr, 2), "reason": "ENTRY_BUY"})
+                                      "pnl": 0.0, "rr": round(plan.rr, 2), "reason": "ENTRY_BUY",
+                                      "qty": round(plan.volume / max(plan.entry, 0.000001), 6)})
                 elif plan.action == "SELL_STOP":
                     if c.low <= plan.entry:
                         filled_positions.append({
@@ -412,7 +413,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                         twr.writerow({"ts": c.ts.isoformat(), "action": "SHORT",
                                       "entry": round(plan.entry, 6), "exit": "",
                                       "sl": round(plan.sl, 6), "tp": round(plan.tp, 6),
-                                      "pnl": 0.0, "rr": round(plan.rr, 2), "reason": "ENTRY_SHORT"})
+                                      "pnl": 0.0, "rr": round(plan.rr, 2), "reason": "ENTRY_SHORT",
+                                      "qty": round(plan.volume / max(plan.entry, 0.000001), 6)})
                 
                 # Expiry
                 if plan.expiry_idx <= i:
@@ -438,7 +440,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                         twr.writerow({"ts": c.ts.isoformat(), "action": "SELL",
                                       "entry": round(pos["entry"], 6), "exit": round(pos["sl"], 6),
                                       "sl": round(pos["sl"], 6), "tp": round(pos["tp"], 6),
-                                      "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "SL_HIT"})
+                                      "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "SL_HIT",
+                                      "qty": round(vol / max(pos["entry"], 0.000001), 6)})
                     elif c.high >= pos["tp"]:
                         pos["exit_ts"] = c.ts.isoformat()
                         pos["exit"] = pos["tp"]
@@ -452,7 +455,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                         twr.writerow({"ts": c.ts.isoformat(), "action": "SELL",
                                       "entry": round(pos["entry"], 6), "exit": round(pos["tp"], 6),
                                       "sl": round(pos["sl"], 6), "tp": round(pos["tp"], 6),
-                                      "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "TP_HIT"})
+                                      "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "TP_HIT",
+                                      "qty": round(vol / max(pos["entry"], 0.000001), 6)})
                         
                 elif pos["action"] == "SELL_STOP":
                     vol = float(pos.get("volume", 0))
@@ -469,7 +473,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                         twr.writerow({"ts": c.ts.isoformat(), "action": "COVER",
                                       "entry": round(pos["entry"], 6), "exit": round(pos["sl"], 6),
                                       "sl": round(pos["sl"], 6), "tp": round(pos["tp"], 6),
-                                      "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "SL_HIT"})
+                                      "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "SL_HIT",
+                                      "qty": round(vol / max(pos["entry"], 0.000001), 6)})
                     elif c.low <= pos["tp"]:
                         pos["exit_ts"] = c.ts.isoformat()
                         pos["exit"] = pos["tp"]
@@ -483,7 +488,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                         twr.writerow({"ts": c.ts.isoformat(), "action": "COVER",
                                       "entry": round(pos["entry"], 6), "exit": round(pos["tp"], 6),
                                       "sl": round(pos["sl"], 6), "tp": round(pos["tp"], 6),
-                                      "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "TP_HIT"})
+                                      "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "TP_HIT",
+                                      "qty": round(vol / max(pos["entry"], 0.000001), 6)})
             
             # Hard gates — can we trade?
             if session == "NONE":
@@ -496,7 +502,7 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                 reason = "MAX_TRADES_SESSION"
             elif session == "NY" and trades_ny >= cfg.max_trades_per_session:
                 reason = "MAX_TRADES_SESSION"
-            elif daily_realized_pnl > 0 and (daily_realized_pnl / daily_start_balance) * 100 >= cfg.max_daily_loss_pct:
+            elif daily_realized_pnl < 0 and abs(daily_realized_pnl / daily_start_balance) * 100 >= cfg.max_daily_loss_pct:
                 reason = "DAILY_LOSS_LIMIT"
             elif pause_until_idx > i:
                 reason = "STREAK_PAUSE"

@@ -135,3 +135,33 @@ Use explicit `CREATE UNIQUE INDEX IF NOT EXISTS` statements after table creation
 - Related Files: `sql/schema.sql`, `scripts/collector.py`
 
 ---
+
+## [ERR-20260511-002] fabian_impossible_sl_tp
+
+**Logged**: 2026-05-11T12:45:00+02:00
+**Priority**: high
+**Status**: fixed
+**Area**: trading-bot
+
+### Summary
+FabianPullback paper results were inflated because SL/TP could be generated on the wrong side of entry, making impossible stop-loss hits count as profitable exits.
+
+### Error
+```text
+Example long before fix: BUY entry 125.22, SL 125.24999, TP 125.25
+Example short before fix: SHORT entry 125.14, SL 125.10001, TP 125.10
+```
+
+### Context
+- Detected while comparing Fabian Python vs FabianSpotLong.
+- Root cause: `build_trade_plan()` used the broken structure level as stop anchor instead of the pullback zone edge.
+- Also found `daily_realized_pnl > 0` used for DAILY_LOSS_LIMIT, which should check negative realized PnL.
+
+### Suggested Fix
+Use the entry-zone edge as stop anchor, validate risk direction, include qty in logs, and reset/re-simulate paper data after fixing.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `fabian_pullback_bot.py`, `scripts/collector.py`
+
+---
