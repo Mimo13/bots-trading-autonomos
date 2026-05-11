@@ -125,32 +125,55 @@ def load_wallet_positions(conn, bot: str):
                               float(x.get('unrealized_pnl_usd') or 0)])
 
 
+def _latest_run_by_prefix(runs: Path, prefixes: list[str]) -> Optional[Path]:
+    latest = None
+    for prefix in prefixes:
+        for entry in runs.glob(prefix):
+            summary = entry / 'summary.json'
+            if summary.exists():
+                mt = summary.stat().st_mtime
+                if latest is None or mt > latest[0]:
+                    latest = (mt, entry)
+    return latest[1] if latest else None
+
+
 def load_poly(conn):
+    # PolyKronosPaper: import only latest run to avoid duplicated backtest windows.
     runs = ROOT / 'runtime/polymarket/runs'
-    files = sorted(runs.glob('[0-9]*/trades_log.csv')) if runs.exists() else []
+    latest = _latest_run_by_prefix(runs, ['[0-9]*']) if runs.exists() else None
     now = datetime.now(timezone.utc)
     day0 = now.date()
     week0 = now - timedelta(days=7)
     pnl_day = 0.0
     pnl_week = 0.0
-    for f in files[-40:]:
-        with f.open() as h:
-            for x in csv.DictReader(h):
-                ts = parse_ts(x['entry_timestamp_utc'])
-                pnl = float(x.get('pnl') or 0)
-                stake = float(x.get('stake') or 0)
-                if ts.date() == day0:
-                    pnl_day += pnl
-                if ts >= week0:
-                    pnl_week += pnl
-                side = 'BUY' if x.get('side') == 'UP' else 'SELL'
-                conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
-                values('poly',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
-                             [ts, side, stake, stake, pnl, x.get('result'), json.dumps(x)])
-    balance = last_bot_balance('2', INITIAL_BALANCE)  # runs named YYYYMMDD...
+    balance = INITIAL_BALANCE
+    if latest:
+        summary = latest / 'summary.json'
+        if summary.exists():
+            data = json.loads(summary.read_text())
+            balance = float(data.get('final_equity', data.get('final_balance', INITIAL_BALANCE)))
+        f = latest / 'trades_log.csv'
+        if f.exists():
+            with f.open() as h:
+                for x in csv.DictReader(h):
+                    ts = parse_ts(x['entry_timestamp_utc'])
+                    pnl = float(x.get('pnl') or 0)
+                    stake = float(x.get('stake') or 0)
+                    if ts.date() == day0:
+                        pnl_day += pnl
+                    if ts >= week0:
+                        pnl_week += pnl
+                    side = 'BUY' if x.get('side') == 'UP' else 'SELL'
+                    conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
+                    values('poly',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
+                                 [ts, side, stake, stake, pnl, x.get('result'), json.dumps(x)])
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='poly' and ts >= current_date")
+    pnl_day = float(r.fetchone()[0])
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='poly' and ts >= current_date - interval '7 days'")
+    pnl_week = float(r.fetchone()[0])
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
-    upsert_status(conn, 'poly', is_running=running, balance=balance,
-                  pnl_day=pnl_day, pnl_week=pnl_week, tokens=0)
+    upsert_status(conn, 'poly', is_running=running, balance=round(balance, 6),
+                  pnl_day=round(pnl_day, 6), pnl_week=round(pnl_week, 6), tokens=0)
 
 
 # ARCHIVADO: FabiánPullback C# (cTrader) — código guardado, fuera del dashboard
@@ -240,28 +263,34 @@ def load_pfolio(conn):
     now = datetime.now(timezone.utc)
     day0 = now.date()
     week0 = now - timedelta(days=7)
-    if runs.exists():
-        for entry in list(runs.glob('portfolio_*')) + list(runs.glob('pfolio_*')):
-            tl = entry / 'trades_log.csv'
-            if tl.exists():
-                with tl.open() as f:
-                    for x in csv.DictReader(f):
-                        ts_str = x.get('ts', '')
-                        try:
-                            ts = parse_ts(ts_str)
-                        except Exception:
-                            continue
-                        pnl = float(x.get('realized_pnl', 0) or 0)
-                        side = x.get('side', '').upper()
-                        # Solo las ventas tienen resultado (compras están abiertas)
-                        if side == 'SELL':
-                            result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
-                        else:
-                            result = ''  # posición abierta, sin resultado aún
-                        conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
-                        values('pfolio',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
-                                     [ts, side, float(x.get('qty', 0) or 0),
-                                      float(x.get('usd_amount', 0) or 0), pnl, result, json.dumps(x)])
+    latest_entry = _latest_run_by_prefix(runs, ['portfolio_*', 'pfolio_*']) if runs.exists() else None
+    pnl_day = 0.0
+    pnl_week = 0.0
+    if latest_entry:
+        tl = latest_entry / 'trades_log.csv'
+        if tl.exists():
+            with tl.open() as f:
+                for x in csv.DictReader(f):
+                    ts_str = x.get('ts', '')
+                    try:
+                        ts = parse_ts(ts_str)
+                    except Exception:
+                        continue
+                    pnl = float(x.get('realized_pnl', 0) or 0)
+                    side = x.get('side', '').upper()
+                    if ts.date() == day0:
+                        pnl_day += pnl
+                    if ts >= week0:
+                        pnl_week += pnl
+                    # Solo las ventas tienen resultado (compras estan abiertas)
+                    if side == 'SELL':
+                        result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                    else:
+                        result = ''
+                    conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
+                    values('pfolio',%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
+                                 [ts, side, float(x.get('qty', 0) or 0),
+                                  float(x.get('usd_amount', 0) or 0), pnl, result, json.dumps(x)])
     # Read latest portfolio summary for balance and wallet
     balance = INITIAL_BALANCE
     tokens_value = 0.0
@@ -269,14 +298,8 @@ def load_pfolio(conn):
     position_price = 0.0
     
     latest_summary = None
-    latest_mtime = 0
-    for entry in list(runs.glob('portfolio_*')) + list(runs.glob('pfolio_*')):
-        s = entry / 'summary.json'
-        if s.exists():
-            mt = s.stat().st_mtime
-            if mt > latest_mtime:
-                latest_mtime = mt
-                latest_summary = json.loads(s.read_text())
+    if latest_entry and (latest_entry / 'summary.json').exists():
+        latest_summary = json.loads((latest_entry / 'summary.json').read_text())
     
     if latest_summary:
         final_balance = float(latest_summary.get('final_balance', INITIAL_BALANCE))
@@ -296,9 +319,13 @@ def load_pfolio(conn):
             on conflict(bot_name,symbol,side) do update set qty=excluded.qty, entry_price=excluded.entry_price, mark_price=excluded.mark_price, updated_at=now()''',
                          [round(position_qty, 6), round(position_price, 4), round(position_price, 4)])
     
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='pfolio' and ts >= current_date")
+    pnl_day = float(r.fetchone()[0])
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name='pfolio' and ts >= current_date - interval '7 days'")
+    pnl_week = float(r.fetchone()[0])
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
     upsert_status(conn, 'pfolio', is_running=running, balance=balance,
-                  pnl_day=0, pnl_week=0, tokens=round(tokens_value, 2))
+                  pnl_day=round(pnl_day, 6), pnl_week=round(pnl_week, 6), tokens=round(tokens_value, 2))
 
 
 def load_fabianpro(conn):

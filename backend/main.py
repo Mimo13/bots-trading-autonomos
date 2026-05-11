@@ -19,7 +19,7 @@ BOT_META = {
     'fabian_spot_long': {'label': 'FabianSpotLong', 'short': 'FabianSpot', 'order': 25, 'family': 'crypto', 'compare': True, 'exchange': 'Binance (USDC)'},
     'xrp_grid': {'label': 'XRP Grid Bot', 'short': 'XRPGrid', 'order': 48, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
     'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket', 'ai': True, 'exchange': 'Polymarket'},
-    'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'polymarket', 'ai': True, 'exchange': 'Polymarket'},
+    'pfolio': {'label': 'SOL Portfolio Spot', 'short': 'SOLPortfolio', 'order': 60, 'family': 'crypto', 'ai': True, 'exchange': 'MEXC (USDT)'},
     # ARCHIVADO 2026-05-11:
     # 'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', ...} — shorts irrealistas; reemplazado por fabian_spot_long
     # 'fabianpro': {'label': 'FabianPro', ...} — shorts + rendimiento mediocre (+$16 en 42 trades)
