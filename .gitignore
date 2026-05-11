@@ -15,3 +15,8 @@ runtime/runs/
 
 # OS
 .DS_Store
+openswarm/
+openswarm/
+runtime/logs/
+runtime/runs/
+**.pyc

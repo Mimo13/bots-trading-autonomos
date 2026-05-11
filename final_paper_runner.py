@@ -47,6 +47,7 @@ def run() -> dict:
         'ts_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         'ctrader_signal_written': False,
         'notes': [],
+        'archived_skipped': ['fabian_py (→fabian_spot_long)', 'fabianpro', 'mtfreg', 'boxbr', 'scalp'],
     }
 
     # cTrader signal (always runs, independent)
@@ -106,17 +107,10 @@ def run() -> dict:
     if s2: status['pfolio_summary'] = s2
     if tmp2.exists(): tmp2.unlink()
 
-    # 3. FabiánPullback Python — estructura/ruptura
-    cfg3 = json.loads(FABIAN_CONFIG.read_text())
-    cfg3['initial_balance'] = INITIAL_BALANCE
-    tmp3 = POLY_RUNS_DIR / f'_cfg_fabian_{ts}.json'
-    tmp3.write_text(json.dumps(cfg3))
-    out3 = POLY_RUNS_DIR / f'fabian_{ts}'
-    cmd3 = [PYTHON, str(ROOT / 'fabian_pullback_bot.py'),
-            '--input', str(poly_input), '--config', str(tmp3), '--output-dir', str(out3)]
-    s3 = run_bot(cmd3, 'fabian', 'final_balance', status)
-    if s3: status['fabian_summary'] = s3
-    if tmp3.exists(): tmp3.unlink()
+    # [ARCHIVADO 2026-05-11] FabiánPullback Python — estructura/ruptura con shorts
+    # Reemplazado por FabianSpotLong (3b). Los shorts no son replicables en spot.
+    # cfg3 = json.loads(FABIAN_CONFIG.read_text())
+    # ...
 
     # 3b. FabianSpotLong — Fabián adaptado a spot long-only para comparar con SolPullback
     cfg3b = json.loads(FABIAN_SPOT_LONG_CONFIG.read_text())

@@ -627,9 +627,9 @@ def main():
         load_poly(conn)
         load_sol_pb(conn)
         load_pfolio(conn)  # reactivado 2026-05-10: RSI-based
-        load_fabian_py(conn)
+        # load_fabian_py(conn) — ARCHIVADO 2026-05-11: shorts irrealistas, usar fabian_spot_long
         load_fabian_spot_long(conn)
-        load_fabianpro(conn)
+        # load_fabianpro(conn) — ARCHIVADO 2026-05-11: shorts + rendimiento mediocre
         load_generic_run_bot(conn, 'xrp_grid', 'xrp_grid')
         load_generic_run_bot(conn, 'tv_sol', 'tv_')
 

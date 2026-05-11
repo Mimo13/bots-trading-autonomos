@@ -15,18 +15,17 @@ app=FastAPI(title='Bots Trading Dashboard')
 app.mount('/static', StaticFiles(directory=str(ROOT/'frontend')), name='static')
 
 BOT_META = {
-    'sol_pb': {'label': 'SolPullbackBot', 'short': 'SolPullback', 'order': 10, 'family': 'crypto'},
-    'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', 'order': 20, 'family': 'crypto'},
-    'fabian_spot_long': {'label': 'FabianSpotLong', 'short': 'FabianSpot', 'order': 25, 'family': 'crypto', 'compare': True},
-    'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
-    # ARCHIVADO: 'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet'},
-    # ARCHIVADO: 'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet'},
-    # ARCHIVADO: 'tv_sol': {'label': 'TV Signal SOL', 'short': 'TV-SOL', 'order': 41, 'family': 'crypto'},
-    'mtfreg': {'label': 'MTF Regime Bot', 'short': 'MTFReg', 'order': 45, 'family': 'crypto'},
-    'boxbr': {'label': 'Box Breakout Bot', 'short': 'BoxBr', 'order': 46, 'family': 'crypto'},
-    'scalp': {'label': 'Scalping 5m Bot', 'short': 'Scalp5m', 'order': 47, 'family': 'crypto'},
-    'xrp_grid': {'label': 'XRP Grid Bot', 'short': 'XRPGrid', 'order': 48, 'family': 'crypto'},
-    'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'crypto', 'ai': True},
+    'sol_pb': {'label': 'SolPullbackBot', 'short': 'SolPullback', 'order': 10, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    'fabian_spot_long': {'label': 'FabianSpotLong', 'short': 'FabianSpot', 'order': 25, 'family': 'crypto', 'compare': True, 'exchange': 'Binance (USDC)'},
+    'xrp_grid': {'label': 'XRP Grid Bot', 'short': 'XRPGrid', 'order': 48, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket', 'ai': True, 'exchange': 'Polymarket'},
+    'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'polymarket', 'ai': True, 'exchange': 'Polymarket'},
+    # ARCHIVADO 2026-05-11:
+    # 'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', ...} — shorts irrealistas; reemplazado por fabian_spot_long
+    # 'fabianpro': {'label': 'FabianPro', ...} — shorts + rendimiento mediocre (+$16 en 42 trades)
+    # 'mtfreg': {'label': 'MTF Regime Bot', ...} — plano (+$0.21), 5 trades, shorts
+    # 'boxbr': {'label': 'Box Breakout Bot', ...} — plano (+$0.07), 5 trades, shorts
+    # 'scalp': {'label': 'Scalping 5m Bot', ...} — plano (+$0.03), 6 trades, shorts
 }
 
 def _meta(bot: str):
@@ -296,7 +295,7 @@ def weekly_compare():
              coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
-        and bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro')
+        and bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp')
       group by bot_name
     ''')
 
@@ -305,10 +304,10 @@ def weekly_compare():
         agg[r[0]]={'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])}
 
     # Include all bots from BOT_META except poly, and those in bot_status
-    bots_rows=q("select bot_name from bot_status where bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro') order by bot_name")
+    bots_rows=q("select bot_name from bot_status where bot_name not in ('fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp') order by bot_name")
     bot_names=[r[0] for r in bots_rows]
     for b in BOT_META.keys():
-        if b != 'poly' and b not in bot_names:
+        if b not in bot_names:
             bot_names.append(b)
 
     items=[]
@@ -405,7 +404,7 @@ def stop(bot:str):
 @app.get('/api/bots')
 def bots_list():
     """List all registered bots dynamically."""
-    rows = q("select bot_name, is_running, mode from bot_status where bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro') order by bot_name")
+    rows = q("select bot_name, is_running, mode from bot_status where bot_name not in ('fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp') order by bot_name")
     bots=[]
     for r in rows:
         m=_meta(r[0])
