@@ -1,0 +1,74 @@
+{
+  "enabled": true,
+  "paper_only": true,
+  "apply_actions": false,
+  "base_symbol": "SOLUSDT",
+  "risk": {
+    "max_portfolio_drawdown_pct": 8.0,
+    "max_daily_loss_usd": 10.0,
+    "min_win_rate_for_auto_run": 0.45,
+    "min_closed_trades_for_confidence": 5
+  },
+  "bots": [
+    {
+      "name": "sol_pb",
+      "label": "SolPullbackBot",
+      "prefix": "sol_pb",
+      "style": "pullback_trend",
+      "regimes": ["bull", "sideways"],
+      "can_auto_start": true,
+      "can_auto_pause": true,
+      "test_candidate": false
+    },
+    {
+      "name": "fabian_spot_long",
+      "label": "FabianSpotLong",
+      "prefix": "fabian_spot_long",
+      "style": "structure_trend",
+      "regimes": ["bull", "sideways"],
+      "can_auto_start": true,
+      "can_auto_pause": true,
+      "test_candidate": false
+    },
+    {
+      "name": "xrp_grid",
+      "label": "XRP Grid Bot",
+      "prefix": "xrp_grid",
+      "style": "grid",
+      "regimes": ["sideways", "bear"],
+      "can_auto_start": false,
+      "can_auto_pause": true,
+      "test_candidate": false
+    },
+    {
+      "name": "bnb_grid",
+      "label": "BNB Grid Bot",
+      "prefix": "bnb_grid",
+      "style": "grid",
+      "regimes": ["sideways", "bear"],
+      "can_auto_start": false,
+      "can_auto_pause": true,
+      "test_candidate": false
+    },
+    {
+      "name": "orch_mtfreg",
+      "label": "Orch Test · MTF Regime",
+      "prefix": "mtfreg",
+      "style": "regime_pullback",
+      "regimes": ["bull", "sideways"],
+      "can_auto_start": false,
+      "can_auto_pause": false,
+      "test_candidate": true
+    },
+    {
+      "name": "orch_boxbr",
+      "label": "Orch Test · Box Breakout",
+      "prefix": "boxbr",
+      "style": "breakout",
+      "regimes": ["bull", "risk_off"],
+      "can_auto_start": false,
+      "can_auto_pause": false,
+      "test_candidate": true
+    }
+  ]
+}

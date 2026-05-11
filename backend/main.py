@@ -244,6 +244,39 @@ def reasons_hourly(bot:str, days:int=1):
     items=[{'hour':h,'reason_code':rc,'count':n} for (h,rc),n in sorted(hourly.items(), key=lambda x:(x[0][0],-x[1]))]
     return {'bot':bot,'days':days,'items':items}
 
+def _orchestrator_state():
+    p = ROOT / 'runtime/orchestrator/state.json'
+    if not p.exists():
+        return {'enabled': False, 'note': 'state not generated yet', 'bots': []}
+    try:
+        return json.loads(p.read_text())
+    except Exception as e:
+        return {'enabled': False, 'error': str(e), 'bots': []}
+
+@app.get('/api/orchestrator/status')
+def orchestrator_status():
+    return _orchestrator_state()
+
+@app.get('/api/orchestrator/decisions')
+def orchestrator_decisions(limit:int=40):
+    p = ROOT / 'runtime/orchestrator/decisions.jsonl'
+    if not p.exists():
+        return {'items': []}
+    lines = p.read_text().splitlines()[-max(1,min(limit,200)):]
+    items=[]
+    for line in reversed(lines):
+        try:
+            items.append(json.loads(line))
+        except Exception:
+            pass
+    return {'items': items}
+
+@app.post('/api/orchestrator/run')
+def orchestrator_run():
+    py=str(ROOT/'.venv/bin/python')
+    cp=subprocess.run([py, str(ROOT/'scripts/bot_orchestrator.py')], capture_output=True, text=True)
+    return {'ok':cp.returncode==0,'stdout':cp.stdout[-2000:], 'stderr':cp.stderr[-1200:], 'state': _orchestrator_state()}
+
 @app.get('/api/strategy/recommendations')
 def strategy_recommendations():
     rows=q('''select bot_name,ts,summary,recommendations,confidence from strategy_recommendations order by ts desc limit 10''')
