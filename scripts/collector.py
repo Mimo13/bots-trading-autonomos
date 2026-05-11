@@ -592,6 +592,125 @@ def load_turtle(conn):
                   pnl_day=0, pnl_week=0, tokens=0)
 
 
+
+def _pnl_day_week(conn, bot_name: str) -> tuple[float, float]:
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name=%s and ts >= current_date", [bot_name])
+    pnl_day = float(r.fetchone()[0])
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name=%s and ts >= current_date - interval '7 days'", [bot_name])
+    pnl_week = float(r.fetchone()[0])
+    return pnl_day, pnl_week
+
+
+def load_latest_spot_long_bot(conn, bot_name: str, prefix: str, default_symbol: str):
+    """Importa solo el run mas reciente de un bot spot long-only basado en FabianPullback."""
+    runs = ROOT / 'runtime/polymarket/runs'
+    latest = _latest_run_by_prefix(runs, [f'{prefix}_*']) if runs.exists() else None
+    if latest:
+        tl = latest / 'trades_log.csv'
+        if tl.exists():
+            with tl.open() as f:
+                for x in csv.DictReader(f):
+                    try:
+                        ts = parse_ts(x.get('ts', ''))
+                    except Exception:
+                        continue
+                    pnl = float(x.get('pnl', 0) or 0)
+                    action = x.get('action', '').upper()
+                    qty = float(x.get('qty', 0) or 0)
+                    entry_price = float(x.get('entry_price', x.get('entry', 0)) or 0)
+                    exit_price = float(x.get('exit_price', x.get('exit', 0)) or 0)
+
+                    if action in ('BUY_STOP', 'BUY'):
+                        side = 'BUY'; result = ''
+                        usd = round(qty * entry_price, 2) if qty > 0 and entry_price > 0 else 1.0
+                    elif action == 'SELL':
+                        side = 'SELL'
+                        net_pnl, total_fee = apply_fees(qty, entry_price, exit_price, pnl)
+                        result = 'WIN' if net_pnl > 0 else 'LOSS' if net_pnl < 0 else 'FLAT'
+                        usd = round(qty * exit_price, 2) if qty > 0 and exit_price > 0 else abs(pnl)
+                        x['fee_usd'] = total_fee; pnl = net_pnl
+                    else:
+                        continue
+
+                    if 'symbol' not in x or not x.get('symbol'):
+                        x['symbol'] = default_symbol
+                    x['spot_long_only'] = True
+                    conn.execute("""insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
+                    values(%s,%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing""",
+                                 [bot_name, ts, side, qty, usd, pnl, result, json.dumps(x)])
+
+                    if action == 'SELL':
+                        conn.execute(
+                            """update trades set result='ENTRY_PAIRED' where ctid in (
+                                select ctid from trades where bot_name=%s and side='BUY' and result='' and ts < %s order by ts desc limit 1
+                            )""",
+                            [bot_name, ts]
+                        )
+
+    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name=%s", [bot_name])
+    total_pnl = float(r.fetchone()[0])
+    pnl_day, pnl_week = _pnl_day_week(conn, bot_name)
+    running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
+    upsert_status(conn, bot_name, is_running=running, balance=round(INITIAL_BALANCE + total_pnl, 2),
+                  pnl_day=round(pnl_day, 2), pnl_week=round(pnl_week, 2), tokens=0)
+
+
+def load_latest_grid_bot(conn, bot_name: str, prefix: str, token: str):
+    """Importa solo el run mas reciente de grid bot y expone cash + valor de tokens."""
+    runs = ROOT / 'runtime/polymarket/runs'
+    latest = _latest_run_by_prefix(runs, [f'{prefix}_*']) if runs.exists() else None
+    balance = INITIAL_BALANCE
+    tokens_value = 0.0
+    token_qty = 0.0
+    if latest:
+        tl = latest / 'trades_log.csv'
+        if tl.exists():
+            with tl.open() as f:
+                for x in csv.DictReader(f):
+                    try:
+                        ts = parse_ts(x.get('ts', ''))
+                    except Exception:
+                        continue
+                    pnl = float(x.get('pnl', 0) or 0)
+                    side = (x.get('side') or x.get('action') or '').upper()
+                    qty = float(x.get('qty', 0) or 0)
+                    usd = float(x.get('usd_amount', 0) or abs(pnl) or 0)
+                    result = '' if side == 'BUY' else ('WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT')
+                    conn.execute("""insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
+                    values(%s,%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing""",
+                                 [bot_name, ts, side, qty, usd, pnl, result, json.dumps(x)])
+                    if side == 'SELL':
+                        conn.execute(
+                            """update trades set result='ENTRY_PAIRED' where ctid in (
+                                select ctid from trades where bot_name=%s and side='BUY' and result='' and ts < %s order by ts desc limit 1
+                            )""",
+                            [bot_name, ts]
+                        )
+        summary = latest / 'summary.json'
+        if summary.exists():
+            try:
+                d = json.loads(summary.read_text())
+                total_equity = float(d.get('total_equity', INITIAL_BALANCE))
+                tokens_value = float(d.get('xrp_value_usd', 0) or 0)
+                token_qty = float(d.get('xrp_hold', 0) or 0)
+                balance = round(total_equity - tokens_value, 2)
+            except Exception:
+                pass
+    if token_qty > 0 and tokens_value > 0:
+        mark = tokens_value / token_qty
+        conn.execute("""insert into wallet_tokens(bot_name,token,amount,usd_value,updated_at)
+        values(%s,%s,%s,%s,now())
+        on conflict(bot_name,token) do update set amount=excluded.amount, usd_value=excluded.usd_value, updated_at=now()""",
+                     [bot_name, token, round(token_qty, 8), round(tokens_value, 2)])
+        conn.execute("""insert into positions_open(bot_name,symbol,side,qty,entry_price,mark_price,unrealized_pnl_usd,updated_at)
+        values(%s,%s,'BUY',%s,%s,%s,0,now())
+        on conflict(bot_name,symbol,side) do update set qty=excluded.qty, entry_price=excluded.entry_price, mark_price=excluded.mark_price, updated_at=now()""",
+                     [bot_name, token, round(token_qty, 8), round(mark, 6), round(mark, 6)])
+    pnl_day, pnl_week = _pnl_day_week(conn, bot_name)
+    running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
+    upsert_status(conn, bot_name, is_running=running, balance=balance,
+                  pnl_day=round(pnl_day, 6), pnl_week=round(pnl_week, 6), tokens=round(tokens_value, 2))
+
 def load_generic_run_bot(conn, bot_name: str, prefix: str):
     runs = ROOT / 'runtime/polymarket/runs'
     if runs.exists():
@@ -658,6 +777,8 @@ def main():
         load_fabian_spot_long(conn)
         # load_fabianpro(conn) — ARCHIVADO 2026-05-11: shorts + rendimiento mediocre
         load_generic_run_bot(conn, 'xrp_grid', 'xrp_grid')
+        load_latest_spot_long_bot(conn, 'bnb_spot_long', 'bnb_spot_long', 'BNBUSDC')
+        load_latest_grid_bot(conn, 'bnb_grid', 'bnb_grid', 'BNB')
         load_generic_run_bot(conn, 'tv_sol', 'tv_')
 
 

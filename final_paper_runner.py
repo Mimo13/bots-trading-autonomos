@@ -22,6 +22,8 @@ FABIANPRO_CONFIG = ROOT / 'fabian_pro_config.json'
 TURTLE_CONFIG = ROOT / 'turtle_bot_config.json'
 POLY_RUNS_DIR = ROOT / 'runtime/polymarket/runs'
 XRP_GRID_CONFIG = ROOT / 'xrp_grid_config.json'
+BNB_SPOT_LONG_CONFIG = ROOT / 'bnb_spot_long_config.json'
+BNB_GRID_CONFIG = ROOT / 'bnb_grid_config.json'
 PYTHON = str(ROOT / '.venv/bin/python')
 
 INITIAL_BALANCE = 100.0
@@ -60,7 +62,7 @@ def run() -> dict:
     # Fetch live data for all bot symbols from Binance
     try:
         from data_fetcher import update_feed_file
-        feed_symbols = ['SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'BTCUSDT']
+        feed_symbols = ['SOLUSDT', 'XRPUSDT', 'BNBUSDC', 'ADAUSDT', 'DOGEUSDT', 'BTCUSDT']
         feed_dir = ROOT / 'runtime' / 'live'
         for sym in feed_symbols:
             try:
@@ -182,6 +184,36 @@ def run() -> dict:
         s6 = run_bot(cmd6, 'xrp_grid', 'final_balance', status)
         if s6: status['xrp_grid_summary'] = s6
         if tmp6.exists(): tmp6.unlink()
+
+    # 6b. BnbSpotLongBot — Fabián spot long-only en BNB/USDC
+    bnb_feed = ROOT / 'runtime/live/BNBUSDC_5m.csv'
+    if bnb_feed.exists():
+        cfg6b = json.loads(BNB_SPOT_LONG_CONFIG.read_text())
+        cfg6b['initial_balance'] = INITIAL_BALANCE
+        cfg6b['spot_long_only'] = True
+        cfg6b['symbol'] = 'BNBUSDC'
+        tmp6b = POLY_RUNS_DIR / f'_cfg_bnb_spot_long_{ts}.json'
+        tmp6b.write_text(json.dumps(cfg6b))
+        out6b = POLY_RUNS_DIR / f'bnb_spot_long_{ts}'
+        cmd6b = [PYTHON, str(ROOT / 'fabian_pullback_bot.py'),
+                 '--input', str(bnb_feed), '--config', str(tmp6b), '--output-dir', str(out6b)]
+        s6b = run_bot(cmd6b, 'bnb_spot_long', 'final_balance', status)
+        if s6b: status['bnb_spot_long_summary'] = s6b
+        if tmp6b.exists(): tmp6b.unlink()
+
+    # 6c. BNB Grid Bot — misma lógica grid dinámica que XRP Grid, en BNB/USDC
+    if bnb_feed.exists():
+        out6c = POLY_RUNS_DIR / f'bnb_grid_{ts}'
+        cfg6c = json.loads(BNB_GRID_CONFIG.read_text())
+        cfg6c['initial_balance'] = INITIAL_BALANCE
+        cfg6c['symbol'] = 'BNBUSDC'
+        tmp6c = POLY_RUNS_DIR / f'_cfg_bnb_grid_{ts}.json'
+        tmp6c.write_text(json.dumps(cfg6c))
+        cmd6c = [PYTHON, str(ROOT / 'xrp_grid_bot.py'),
+                 '--input', str(bnb_feed), '--config', str(tmp6c), '--output-dir', str(out6c)]
+        s6c = run_bot(cmd6c, 'bnb_grid', 'final_balance', status)
+        if s6c: status['bnb_grid_summary'] = s6c
+        if tmp6c.exists(): tmp6c.unlink()
 
     # 7. AI Grid Advisor (recalcular cuadrícula)
     try:
