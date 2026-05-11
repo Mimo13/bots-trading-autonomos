@@ -28,3 +28,26 @@ For trading dashboards, keep metric widgets and tables backed by the same source
 - Tags: dashboard, open_trades, data_consistency
 
 ---
+
+## [LRN-20260511-001] best_practice
+
+**Logged**: 2026-05-11T18:40:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: infra
+
+### Summary
+For trading automation, prefer isolated observer/recommender modules with `apply_actions=false` before allowing orchestration to mutate bot state.
+
+### Details
+The bot fleet orchestrator was added as a paper-only module that writes `runtime/orchestrator/state.json` and `decisions.jsonl`, with dashboard/API visibility. It does not stop processes or place orders by default, making rollback simple.
+
+### Suggested Action
+Keep new autonomous control loops in observe/recommend mode until several paper cycles validate decisions and guardrails.
+
+### Metadata
+- Source: implementation
+- Related Files: scripts/bot_orchestrator.py, orchestrator_config.json
+- Tags: trading, orchestration, safety
+
+---

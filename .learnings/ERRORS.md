@@ -239,3 +239,28 @@ Add a `--only bot_name` option to `final_paper_runner.py`, or use direct bot com
 - Tags: runner, isolation, dashboard-data
 
 ---
+
+## [ERR-20260511-001] shell_url_globbing
+
+**Logged**: 2026-05-11T18:40:00Z
+**Priority**: low
+**Status**: pending
+**Area**: tests
+
+### Summary
+zsh treated an unquoted URL query string as a glob during an API smoke test.
+
+### Error
+`zsh: no matches found: http://127.0.0.1:8787/api/orchestrator/decisions?limit=2`
+
+### Context
+While checking the new orchestrator endpoint, the URL contained `?limit=2` and was not quoted.
+
+### Suggested Fix
+Always quote URLs with query strings in shell commands: `curl -s 'http://.../path?limit=2'`.
+
+### Metadata
+- Reproducible: yes
+- Related Files: backend/main.py
+
+---
