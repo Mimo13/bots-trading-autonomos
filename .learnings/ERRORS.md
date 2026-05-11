@@ -193,3 +193,49 @@ For ad-hoc parameter grids in shell, use `100:0` and parse with `${pair%:*}` / `
 - Related Files: `fabian_inventory_bot.py`
 
 ---
+
+## [ERR-20260511-001] collector_patch_quote_collision
+
+**Logged**: 2026-05-11T16:20:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: backend
+
+### Summary
+A scripted patch for `scripts/collector.py` failed with `SyntaxError` because the Python heredoc used triple single quotes around content that itself contained triple single-quoted SQL strings.
+
+### Details
+When generating large Python source insertions from a Python script, quote delimiters can collide with embedded SQL/docstring delimiters. The fix was to use a raw triple-double-quoted outer string and triple-double SQL strings inside the generated code.
+
+### Suggested Action
+For future large source insertions, prefer `apply_patch` or choose an outer delimiter that cannot appear in the inserted code; run `py_compile` immediately after patching.
+
+### Metadata
+- Source: error
+- Related Files: scripts/collector.py
+- Tags: patching, python, sql
+
+---
+
+## [ERR-20260511-002] runner_touched_unrelated_comparison_bots
+
+**Logged**: 2026-05-11T16:20:00Z
+**Priority**: high
+**Status**: pending
+**Area**: infra
+
+### Summary
+Running the full `final_paper_runner.py` to initialize new BNB bots also simulated existing comparison bots (`sol_pb`, `fabian_spot_long`), briefly changing dashboard data that should have stayed untouched.
+
+### Details
+The full runner is not isolated by bot; it executes multiple strategies. For targeted bot additions/tests, run only the new bot commands manually or add a selective runner mode before using the unified runner. The comparison DB was reset immediately afterward to keep `sol_pb` and `fabian_spot_long` at $100 / 0 PnL.
+
+### Suggested Action
+Add a `--only bot_name` option to `final_paper_runner.py`, or use direct bot commands for first-run initialization when the user says not to touch other bots.
+
+### Metadata
+- Source: error
+- Related Files: final_paper_runner.py, scripts/collector.py
+- Tags: runner, isolation, dashboard-data
+
+---
