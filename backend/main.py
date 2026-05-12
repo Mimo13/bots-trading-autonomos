@@ -357,7 +357,7 @@ def weekly_compare():
 
 @app.get('/api/weekly-compare-candidates')
 def weekly_compare_candidates():
-    candidate_bots = ['sol_pb', 'fabian_spot_long']
+    candidate_bots = ['bnb_spot_long', 'fabian_spot_long']
     rows=q('''
       select bot_name,
              coalesce(sum(pnl_usd),0) as pnl_week,
