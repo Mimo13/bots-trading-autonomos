@@ -6,6 +6,10 @@
 __pycache__/
 *.pyc
 .venv/
+.venv_hmm/
+
+# HMM analysis output
+hmm/output/
 
 # Runtime
 runtime/logs/
