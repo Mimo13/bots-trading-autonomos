@@ -3,6 +3,12 @@
   "paper_only": true,
   "apply_actions": true,
   "symbols": ["SOLUSDT", "BNBUSDC", "XRPUSDT"],
+  "hmm_regime": {
+    "enabled": false,
+    "timeframe": "4h",
+    "force_retrain": false,
+    "symbols_override": ["SOLUSDT", "XRPUSDT", "BTCUSDT"]
+  },
   "risk": {
     "max_portfolio_drawdown_pct": 8.0,
     "max_daily_loss_usd": 10.0,

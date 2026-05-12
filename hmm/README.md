@@ -63,7 +63,35 @@ on the entire dataset. Results ARE overfitted and should NOT be used directly
 for live trading. For correct usage, see the disclaimer printed at the end
 of every run.
 
-## Path B (future)
+## Path B (implemented as isolated helpers)
 
-Path B will adapt this HMM analysis to the repo's crypto assets and
-orchestrator, without changing any production code — see `PATH_B_NOTES.md`.
+Path B now includes two additive helpers for the repo's crypto assets,
+without changing any production bot/orchestrator behaviour by default:
+
+| File | Purpose |
+|------|---------|
+| `hmm_regime_provider.py` | Trains/loads one HMM per symbol from existing `runtime/live/*_5m.csv` feeds, resamples to `1h` / `4h` / `1d`, maps states to `bull/bear/sideways/risk_off`, and writes a JSON snapshot |
+| `hmm_regime_compare.py` | Compares the current heuristic detector vs the HMM provider side-by-side on the same live feeds |
+| `PATH_B_NOTES.md` | Design notes and integration sketch |
+
+### Path B quick start
+
+```bash
+# Reuse the same isolated environment from Path A
+source .venv_hmm/bin/activate
+
+# Build a current HMM snapshot for repo assets
+python hmm/hmm_regime_provider.py --symbols SOLUSDT,BNBUSDC,XRPUSDT --timeframe 4h --print-json
+
+# Compare HMM vs current orchestrator heuristic
+python hmm/hmm_regime_compare.py --symbols SOLUSDT,BNBUSDC,XRPUSDT --timeframe 4h
+```
+
+Outputs are written under `hmm/output/` by default. Models are cached under
+`hmm/models/`.
+
+### Important
+
+- Path B is still **safe/isolated**: it does not patch orchestrator runtime by itself.
+- Use it to inspect whether HMM adds signal quality before integrating anything.
+- If it beats the heuristic detector, the next step is an **optional** orchestrator hook behind a feature flag.

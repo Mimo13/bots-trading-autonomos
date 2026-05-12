@@ -9,10 +9,12 @@ paper validation.
 from __future__ import annotations
 
 import csv
+import importlib.util
 import json
 import math
 import os
 import statistics
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -75,6 +77,25 @@ def pct_change(a: float, b: float) -> float:
 
 
 REGIME_PRIORITY = {"risk_off": 0, "bear": 1, "sideways": 2, "bull": 3, "unknown": 4}
+
+
+def load_hmm_provider_class():
+    hmm_path = ROOT / "hmm" / "hmm_regime_provider.py"
+    if not hmm_path.exists():
+        return None
+    try:
+        skill_dir = str(hmm_path.parent)
+        if skill_dir not in sys.path:
+            sys.path.insert(0, skill_dir)
+        spec = importlib.util.spec_from_file_location("hmm_regime_provider", hmm_path)
+        if spec is None or spec.loader is None:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = mod
+        spec.loader.exec_module(mod)
+        return mod.HmmRegimeProvider, mod.ProviderConfig
+    except Exception:
+        return None
 
 
 def detect_regime(symbol: str) -> dict[str, Any]:
@@ -155,7 +176,52 @@ def merge_regimes(regimes: list[dict[str, Any]]) -> dict[str, Any]:
             }
             for r in regimes
         ],
+        "source": "heuristic",
     }
+
+
+def resolve_regime(cfg: dict[str, Any]) -> dict[str, Any]:
+    symbols = cfg.get("symbols", [cfg.get("base_symbol", "SOLUSDT")])
+    hmm_cfg = cfg.get("hmm_regime", {}) or {}
+    if hmm_cfg.get("enabled"):
+        loaded = load_hmm_provider_class()
+        if loaded is not None:
+            HmmRegimeProvider, ProviderConfig = loaded
+            try:
+                provider = HmmRegimeProvider(
+                    live_dir=LIVE_DIR,
+                    cfg=ProviderConfig(
+                        timeframe=hmm_cfg.get("timeframe", "4h"),
+                        default_symbols=tuple(hmm_cfg.get("symbols_override") or symbols),
+                    ),
+                )
+                merged = provider.get_snapshot(
+                    symbols=list(hmm_cfg.get("symbols_override") or symbols),
+                    force_retrain=bool(hmm_cfg.get("force_retrain", False)),
+                )
+                out = {
+                    "regime": merged.regime,
+                    "confidence": merged.confidence,
+                    "reason": merged.reason,
+                    "symbols": merged.symbols,
+                    "source": "hmm",
+                    "timeframe": hmm_cfg.get("timeframe", "4h"),
+                }
+                if out["regime"] != "unknown":
+                    return out
+                out["fallback_note"] = "hmm_returned_unknown; falling back to heuristic"
+            except Exception as e:
+                out = {"fallback_note": f"hmm_error: {e}"}
+        else:
+            out = {"fallback_note": "hmm_provider_unavailable"}
+    else:
+        out = {}
+
+    regimes = [detect_regime(sym) for sym in symbols]
+    merged = merge_regimes(regimes)
+    if out.get("fallback_note"):
+        merged["fallback_note"] = out["fallback_note"]
+    return merged
 
 
 def db_fetch(sql: str, params: list[Any] | None = None) -> list[tuple]:
@@ -426,10 +492,7 @@ def run() -> dict[str, Any]:
         (STATE_DIR / "state.json").write_text(json.dumps(state, indent=2, ensure_ascii=False))
         return state
 
-    # Multi-symbol regime detection
-    symbols = cfg.get("symbols", [cfg.get("base_symbol", "SOLUSDT")])
-    regimes = [detect_regime(sym) for sym in symbols]
-    merged = merge_regimes(regimes)
+    merged = resolve_regime(cfg)
     overall_regime = merged["regime"]
 
     auto_pause = cfg.get("auto_pause", {})
@@ -463,7 +526,7 @@ def run() -> dict[str, Any]:
         "bots": items,
         "applied_actions": applied,
         "summary": (
-            f"Régimen {overall_regime} ({merged['confidence']}) multi-symbol. "
+            f"Régimen {overall_regime} ({merged['confidence']}) via {merged.get('source', 'heuristic')}. "
             f"Mejor candidato: {best['label']} -> {best['recommended_action']}" if best else "Sin candidatos"
         ),
     }

@@ -1,6 +1,6 @@
 # Path B — Crypto Asset Adaptation (Design Notes)
 
-**Status**: Design notes only — no production code changes.
+**Status**: Helper modules implemented, still no production code changes by default.
 
 Path A implemented a generic HMM regime analysis tool for any daily OHLCV
 asset (default EURUSD). Path B would adapt this analysis to the repo's
@@ -35,34 +35,25 @@ Instead of training HMM on one asset, Path B would:
    lightweight module (e.g. `hmm_regime_provider.py`) that the orchestrator
    queries at each cycle. No changes to existing bot files.
 
-## Proposed module: `hmm_regime_provider.py` (sketch)
+## Implemented helper modules
 
-```python
-# Located: hmm/hmm_regime_provider.py
-# Reads: cached HMM model + latest OHLCV → regime label per symbol
+### `hmm_regime_provider.py`
 
-class HmmRegimeProvider:
-    """Stateless provider that returns a regime label per symbol.
+Implemented as an isolated helper that:
+- reads `runtime/live/*_5m.csv`
+- resamples to `1h` / `4h` / `1d`
+- trains one GaussianHMM per symbol
+- caches models under `hmm/models/`
+- maps ordered states to `bull/bear/sideways/risk_off`
+- writes a current snapshot under `hmm/output/hmm_regime_snapshot.json`
 
-    Usage in orchestrator:
-        provider = HmmRegimeProvider()
-        regime = provider.get_regime("SOLUSDT")  # returns "bull"
-    """
+### `hmm_regime_compare.py`
 
-    MODELS_DIR = Path(__file__).parent / "models"
-
-    def __init__(self):
-        self.models: Dict[str, GaussianHMM] = {}
-        self._load_or_train()
-
-    def _load_or_train(self):
-        """Train on last 500 days per symbol, cache model file."""
-        ...
-
-    def get_regime(self, symbol: str) -> str:
-        """Return 'bull' | 'bear' | 'sideways' | 'risk_off'."""
-        ...
-```
+Implemented as a side-by-side comparison tool that:
+- runs the current heuristic detector logic on the same feeds
+- runs the HMM provider on the same symbols
+- reports per-symbol agreement/disagreement
+- writes output under `hmm/output/hmm_vs_heuristic.json`
 
 ## How the orchestrator would use it
 
