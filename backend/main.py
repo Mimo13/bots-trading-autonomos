@@ -566,3 +566,108 @@ def personal_portfolio_save(data: dict):
 @app.get('/api/health')
 def health():
     return {'ok':True}
+
+# ──────────────────────────────────────────────
+# CoinEx portfolio endpoint
+# ──────────────────────────────────────────────
+@app.get("/api/coinex/portfolio")
+def coinex_portfolio():
+    try:
+        access_id = os.getenv("COINEX_ACCESS_ID", "")
+        secret_key = os.getenv("COINEX_SECRET_KEY", "")
+        if not access_id or not secret_key:
+            return {"ok": False, "error": "COINEX_ACCESS_ID or COINEX_SECRET_KEY not set", "items": [], "total_usd": 0}
+        from coinex_client import coinex_balance_usd
+        return coinex_balance_usd(access_id, secret_key)
+    except Exception as e:
+        return {"ok": False, "error": str(e), "items": [], "total_usd": 0}
+
+
+# ──────────────────────────────────────────────
+# Shadow Mode — HMM vs Heuristic comparison
+# ──────────────────────────────────────────────
+@app.get("/api/shadow/status")
+def shadow_status():
+    """Current regime: orchestrator heuristic vs HMM snapshot."""
+    import json as _j
+    from pathlib import Path
+    cfg = load_json(CONFIG, {})
+    # Heuristic result
+    symbols = cfg.get("symbols", ["SOLUSDT"])
+    from scripts.bot_orchestrator import detect_regime, merge_regimes
+    heur_regimes = [detect_regime(s) for s in symbols]
+    heur_merged = merge_regimes(heur_regimes)
+    # HMM snapshot
+    snapshot_path = ROOT / "hmm" / "output" / "hmm_regime_snapshot.json"
+    hmm_data = {"regime": "unknown", "confidence": 0.0, "reason": "", "symbols": [], "source": "none"}
+    if snapshot_path.exists():
+        try:
+            hmm_data = _j.loads(snapshot_path.read_text())
+        except Exception:
+            pass
+    heuristic_regime = heur_merged.get("regime", "unknown")
+    hmm_regime = hmm_data.get("regime", "unknown")
+    agree = heuristic_regime == hmm_regime
+    return {
+        "ok": True,
+        "timestamp": utc_now(),
+        "shadow_enabled": bool(cfg.get("hmm_regime", {}).get("enabled")),
+        "heuristic": {
+            "regime": heuristic_regime,
+            "confidence": heur_merged.get("confidence", 0),
+            "reason": heur_merged.get("reason", ""),
+            "source": "orchestrator_heuristic",
+        },
+        "hmm": {
+            "regime": hmm_regime,
+            "confidence": hmm_data.get("confidence", 0),
+            "reason": hmm_data.get("reason", ""),
+            "symbols": hmm_data.get("symbols", []),
+            "source": hmm_data.get("source", "unknown"),
+            "generated_at": hmm_data.get("generated_at", ""),
+        },
+        "comparison": {
+            "agree": agree,
+            "heuristic_regime": heuristic_regime,
+            "hmm_regime": hmm_regime,
+            "disagreement_severity": "high" if (heuristic_regime in ("bull", "sideways") and hmm_regime in ("bear", "risk_off")) or (heuristic_regime == "risk_off" and hmm_regime in ("bull", "sideways")) else "medium" if heuristic_regime != hmm_regime else "none",
+        },
+    }
+
+
+SHADOW_LOG = ROOT / "runtime" / "orchestrator" / "shadow_log.jsonl"
+
+
+@app.get("/api/shadow/history")
+def shadow_history(limit: int = 100):
+    """Historical shadow mode comparisons."""
+    if not SHADOW_LOG.exists():
+        return {"ok": True, "items": []}
+    lines = SHADOW_LOG.read_text().strip().split("\n")
+    items = []
+    for line in lines[-limit:]:
+        try:
+            items.append(json.loads(line))
+        except Exception:
+            continue
+    items.reverse()
+    return {"ok": True, "items": items}
+
+
+@app.post("/api/shadow/log")
+def shadow_log():
+    """Write current shadow comparison to history log."""
+    status = shadow_status()
+    SHADOW_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with SHADOW_LOG.open("a", encoding="utf-8") as f:
+        entry = {
+            "ts": status.get("timestamp", utc_now()),
+            "heuristic_regime": status.get("heuristic", {}).get("regime"),
+            "hmm_regime": status.get("hmm", {}).get("regime"),
+            "agree": status.get("comparison", {}).get("agree"),
+            "heuristic_confidence": status.get("heuristic", {}).get("confidence"),
+            "hmm_confidence": status.get("hmm", {}).get("confidence"),
+            "disagreement_severity": status.get("comparison", {}).get("disagreement_severity"),
+        }
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return {"ok": True}
