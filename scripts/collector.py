@@ -34,7 +34,23 @@ def ensure_schema(conn):
     conn.execute((ROOT / 'sql/schema.sql').read_text())
 
 
+def _orchestrator_paused_bots() -> set:
+    """Read list of bots currently paused by the orchestrator."""
+    paused_file = ROOT / 'runtime/orchestrator/paused_bots.json'
+    try:
+        if paused_file.exists():
+            data = json.loads(paused_file.read_text())
+            return set(data.get('paused', []))
+    except Exception:
+        pass
+    return set()
+
+
 def upsert_status(conn, bot, **vals):
+    is_running = vals.get('is_running', False)
+    # Respect orchestrator pause — never re-enable a paused bot
+    if is_running and bot in _orchestrator_paused_bots():
+        is_running = False
     conn.execute('''
     insert into bot_status(bot_name,is_running,mode,balance_usd,pnl_day_usd,pnl_week_usd,tokens_value_usd,updated_at)
     values(%(bot)s,%(is_running)s,'paper',%(balance)s,%(pnl_day)s,%(pnl_week)s,%(tokens)s,now())
@@ -42,7 +58,7 @@ def upsert_status(conn, bot, **vals):
       is_running=excluded.is_running, mode=excluded.mode, balance_usd=excluded.balance_usd,
       pnl_day_usd=excluded.pnl_day_usd,pnl_week_usd=excluded.pnl_week_usd,tokens_value_usd=excluded.tokens_value_usd,
       updated_at=now()
-    ''', {'bot': bot, 'is_running': vals.get('is_running', False),
+    ''', {'bot': bot, 'is_running': is_running,
           'balance': vals.get('balance', 0), 'pnl_day': vals.get('pnl_day', 0),
           'pnl_week': vals.get('pnl_week', 0), 'tokens': vals.get('tokens', 0)})
 

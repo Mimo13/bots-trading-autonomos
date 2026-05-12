@@ -67,6 +67,17 @@
       "test_candidate": false
     },
     {
+      "name": "poly",
+      "label": "PolyKronosPaper",
+      "prefix": "poly",
+      "style": "ai_kronos",
+      "regimes": ["bull", "bear", "sideways", "risk_off"],
+      "can_auto_start": false,
+      "can_auto_pause": true,
+      "test_candidate": false,
+      "note": "Polymarket AI bot — regime-agnostic, auto-pause enabled for risk testing"
+    },
+    {
       "name": "orch_mtfreg",
       "label": "Orch Test · MTF Regime",
       "prefix": "mtfreg",

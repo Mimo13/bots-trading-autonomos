@@ -113,7 +113,7 @@ def detect_regime(symbol: str) -> dict[str, Any]:
         regime = "sideways"
         reasons.append("no_clear_trend")
 
-    confidence = min(1.0, abs(trend50) * 18 + min(vol * 25, 0.35) + (0.15 if regime != "sideways" else 0.05))
+    confidence = min(1.0, abs(trend50) * 18 + min(vol * 25, 0.35) + (0.15 if regime != "sideways" else 0.12))
     return {
         "symbol": symbol,
         "regime": regime,
@@ -365,12 +365,35 @@ def portfolio_guardrails(items: list[dict[str, Any]], cfg: dict[str, Any]) -> di
     }
 
 
+PAUSED_BOTS = STATE_DIR / "paused_bots.json"
+
+
+def _read_paused() -> set[str]:
+    try:
+        if PAUSED_BOTS.exists():
+            data = json.loads(PAUSED_BOTS.read_text())
+            return set(data.get("paused", []))
+    except Exception:
+        pass
+    return set()
+
+
+def _write_paused(paused: set[str]) -> None:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    PAUSED_BOTS.write_text(json.dumps({"paused": sorted(paused), "updated_at": utc_now()}, indent=2, ensure_ascii=False))
+
+
+def is_paused_by_orchestrator(bot_name: str) -> bool:
+    return bot_name in _read_paused()
+
+
 def apply_logical_actions(items: list[dict[str, Any]], cfg: dict[str, Any]) -> list[dict[str, Any]]:
-    """Apply actions to bot_status in DB. Only affects paper bots, no pkill."""
+    """Apply actions to bot_status in DB and maintain paused_bots.json for collector."""
     applied: list[dict[str, Any]] = []
     if not cfg.get("apply_actions", False) or psycopg is None:
         return applied
     allowed = {b["name"]: b for b in cfg.get("bots", []) if not b.get("test_candidate")}
+    paused = _read_paused()
     try:
         with psycopg.connect(DB_URL) as c:
             with c.cursor() as cur:
@@ -382,10 +405,13 @@ def apply_logical_actions(items: list[dict[str, Any]], cfg: dict[str, Any]) -> l
                     current_running = item.get("is_running", False)
                     if action == "RUN" and bcfg.get("can_auto_start") and not current_running:
                         cur.execute("update bot_status set is_running=true, updated_at=now() where bot_name=%s", [item["name"]])
+                        paused.discard(item["name"])
                         applied.append({"bot": item["name"], "action": "set_running_true"})
                     elif action == "PAUSE" and bcfg.get("can_auto_pause") and current_running:
                         cur.execute("update bot_status set is_running=false, updated_at=now() where bot_name=%s", [item["name"]])
+                        paused.add(item["name"])
                         applied.append({"bot": item["name"], "action": "set_running_false"})
+        _write_paused(paused)
     except Exception as e:
         applied.append({"error": str(e)[:180]})
     return applied
@@ -443,7 +469,7 @@ def run() -> dict[str, Any]:
     }
     (STATE_DIR / "state.json").write_text(json.dumps(state, indent=2, ensure_ascii=False))
     with (STATE_DIR / "decisions.jsonl").open("a", encoding="utf-8") as f:
-        f.write(json.dumps({"ts": ts, "regime": merged, "guardrails": guard, "bots": items[:8]}, ensure_ascii=False) + "\n")
+        f.write(json.dumps({"ts": ts, "regime": merged, "guardrails": guard, "best_candidate": best, "bots": items[:8]}, ensure_ascii=False) + "\n")
     with (STATE_DIR / "orchestrator.log").open("a", encoding="utf-8") as f:
         f.write(f"{ts} {state['summary']} guardrails={guard['violations']} apply={state['apply_actions']}\n")
     return state
