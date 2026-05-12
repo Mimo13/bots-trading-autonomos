@@ -20,7 +20,8 @@ BOT_META = {
     'xrp_grid': {'label': 'XRP Grid Bot', 'short': 'XRPGrid', 'order': 48, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
     'bnb_spot_long': {'label': 'BnbSpotLongBot', 'short': 'BnbSpot', 'order': 49, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
     'bnb_grid': {'label': 'BNB Grid Bot', 'short': 'BNBGrid', 'order': 49.5, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
-    'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket', 'ai': True, 'exchange': 'Polymarket'},
+    # ARCHIVADO 2026-05-13: PolyKronosPaper — 39% WR, -$28.56 PnL 7d, 8 pérdidas seguidas, sin edge en binary options
+    # 'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket', 'ai': True, 'exchange': 'Polymarket'},
     'pfolio': {'label': 'SOL Portfolio Spot', 'short': 'SOLPortfolio', 'order': 60, 'family': 'crypto', 'ai': True, 'exchange': 'MEXC (USDT)'},
     # ARCHIVADO 2026-05-11:
     # 'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', ...} — shorts irrealistas; reemplazado por fabian_spot_long
@@ -205,26 +206,7 @@ def alerts():
 def _collect_reason_rows(bot:str, days:int=1):
     rows=[]
     cutoff=datetime.now(timezone.utc).timestamp() - max(1,days)*86400
-    if bot=='poly':
-        runs=sorted((ROOT/'runtime/polymarket/runs').glob('*/decisions_log.csv'))[-90:]
-        for f in runs:
-            with f.open() as h:
-                for row in csv.DictReader(h):
-                    ts=row.get('timestamp_utc','')
-                    try:
-                        dt=datetime.fromisoformat(ts.replace('Z','+00:00'))
-                    except Exception:
-                        continue
-                    if dt.timestamp()>=cutoff:
-                        rows.append((dt,row.get('reason_code','UNKNOWN')))
-    else:
-        ops=ROOT/'runtime/ops/ctrader_operations.csv'
-        if ops.exists():
-            with ops.open() as h:
-                for row in csv.DictReader(h):
-                    rc=row.get('reason_code') or row.get('operation') or 'UNKNOWN'
-                    dt=datetime.now(timezone.utc)
-                    rows.append((dt,rc))
+    # poly ARCHIVADO 2026-05-13 — no reasons collection needed
     return rows
 
 @app.get('/api/reasons/{bot}')
@@ -330,7 +312,7 @@ def weekly_compare():
              coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
-        and bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp')
+        and bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp')  # poly ARCHIVADO 2026-05-13
       group by bot_name
     ''')
 
@@ -378,22 +360,15 @@ def weekly_compare_candidates():
 
 def _run_pfolio(cfg_path: str = ''):
     """Run portfolio bot with enriched CSV, output to portfolio_ timestamp dir."""
-    poly_input = ROOT / 'runtime/polymarket/polymarket_input_enriched.csv'
-    if not poly_input.exists():
-        poly_input = ROOT / 'runtime/polymarket/polymarket_base_input.csv'
-    if not poly_input.exists():
-        return
-    run_id = datetime.now(timezone.utc).strftime('portfolio_%Y%m%dT%H%M%SZ')
-    out_dir = ROOT / 'runtime/polymarket/runs' / run_id
-    cfg = ROOT / 'polymarket_portfolio_config.json'
-    cmd = [str(ROOT / '.venv/bin/python'), str(ROOT / 'polymarket_portfolio_bot.py'),
-           '--input', str(poly_input), '--config', str(cfg), '--output-dir', str(out_dir)]
-    subprocess.Popen(cmd, cwd=ROOT)
+    # poly ARCHIVADO 2026-05-13 — polymarket input no longer used
+    # polymarket_portfolio_bot.py is also effectively archived (no live data pipeline)
+    pass
 
 
 @app.post('/api/bots/{bot}/start')
 def start(bot:str):
-    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabian_spot_long':'fabian_spot_long','fabianpro':'fabianpro','poly':'poly','tv_sol':'tv_sol'}.get(bot)
+    # poly removed from db_name — ARCHIVADO 2026-05-13
+    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabian_spot_long':'fabian_spot_long','fabianpro':'fabianpro','tv_sol':'tv_sol'}.get(bot)
     # pfolio archivado — ver polymarket_portfolio_bot.py
     if bot=='sol_pb':
         # SolPullbackBot: arranca con datos de Binance
