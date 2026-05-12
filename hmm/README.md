@@ -81,10 +81,10 @@ without changing any production bot/orchestrator behaviour by default:
 source .venv_hmm/bin/activate
 
 # Build a current HMM snapshot for repo assets
-python hmm/hmm_regime_provider.py --symbols SOLUSDT,BNBUSDC,XRPUSDT --timeframe 4h --print-json
+python hmm/hmm_regime_provider.py --symbols SOLUSDT,XRPUSDT --timeframe 4h --print-json
 
 # Compare HMM vs current orchestrator heuristic
-python hmm/hmm_regime_compare.py --symbols SOLUSDT,BNBUSDC,XRPUSDT --timeframe 4h
+python hmm/hmm_regime_compare.py --symbols SOLUSDT,XRPUSDT --timeframe 4h
 ```
 
 Outputs are written under `hmm/output/` by default. Models are cached under

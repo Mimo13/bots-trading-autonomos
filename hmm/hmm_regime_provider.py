@@ -16,6 +16,7 @@ import csv
 import json
 import math
 import pickle
+import warnings
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +26,7 @@ from urllib.request import Request, urlopen
 import numpy as np
 import pandas as pd
 from hmmlearn.hmm import GaussianHMM
+from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LIVE_DIR = ROOT / "runtime" / "live"
@@ -44,7 +46,7 @@ class ProviderConfig:
     random_state: int = 42
     min_bars_after_resample: int = 120
     bars_limit_5m: int = 5000
-    default_symbols: tuple[str, ...] = ("SOLUSDT", "XRPUSDT", "BTCUSDT")
+    default_symbols: tuple[str, ...] = ("SOLUSDT", "XRPUSDT")
 
 
 @dataclass
@@ -169,40 +171,47 @@ class HmmRegimeProvider:
         feat = feat.replace([np.inf, -np.inf], np.nan).dropna()
         return feat
 
+    def _scale_features(self, features: pd.DataFrame) -> tuple[np.ndarray, StandardScaler]:
+        scaler = StandardScaler()
+        X = scaler.fit_transform(features.values)
+        return X, scaler
+
     def _model_cache_path(self, symbol: str) -> Path:
         tf = self.cfg.timeframe.replace("/", "_")
         return self.models_dir / f"{symbol}_{tf}_hmm.pkl"
 
-    def train_hmm(self, features: pd.DataFrame) -> tuple[GaussianHMM, int, np.ndarray, dict[int, int], dict[str, Any]]:
-        X = features.values
+    def train_hmm(self, features: pd.DataFrame) -> tuple[GaussianHMM, int, np.ndarray, dict[int, int], dict[str, Any], StandardScaler]:
+        X, scaler = self._scale_features(features)
         best_model: GaussianHMM | None = None
         best_bic = float("inf")
         best_n = self.cfg.min_states
 
-        for n in range(self.cfg.min_states, self.cfg.max_states + 1):
-            model = GaussianHMM(
-                n_components=n,
-                covariance_type="diag",
-                n_iter=self.cfg.n_iter,
-                random_state=self.cfg.random_state,
-                tol=1e-5,
-            )
-            try:
-                model.fit(X)
-                if not np.isfinite(model.startprob_).all() or not np.isfinite(model.transmat_).all():
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for n in range(self.cfg.min_states, self.cfg.max_states + 1):
+                model = GaussianHMM(
+                    n_components=n,
+                    covariance_type="diag",
+                    n_iter=self.cfg.n_iter,
+                    random_state=self.cfg.random_state,
+                    tol=1e-5,
+                )
+                try:
+                    model.fit(X)
+                    if not np.isfinite(model.startprob_).all() or not np.isfinite(model.transmat_).all():
+                        continue
+                    if np.any(model.transmat_.sum(axis=1) == 0):
+                        continue
+                    log_lik = model.score(X)
+                except Exception:
                     continue
-                if np.any(model.transmat_.sum(axis=1) == 0):
-                    continue
-                log_lik = model.score(X)
-            except Exception:
-                continue
-            n_params = n * (n - 1)
-            n_params += n * X.shape[1] * 2
-            bic = -2 * log_lik + n_params * np.log(len(X))
-            if bic < best_bic:
-                best_bic = bic
-                best_model = model
-                best_n = n
+                n_params = n * (n - 1)
+                n_params += n * X.shape[1] * 2
+                bic = -2 * log_lik + n_params * np.log(len(X))
+                if bic < best_bic:
+                    best_bic = bic
+                    best_model = model
+                    best_n = n
 
         if best_model is None:
             raise ValueError("no valid HMM model converged")
@@ -214,7 +223,7 @@ class HmmRegimeProvider:
         ordered_map = {old: new for new, old in enumerate(ordered)}
         ordered_states = np.array([ordered_map[s] for s in states], dtype=int)
         info = {"bic": round(float(best_bic), 3), "states": best_n}
-        return best_model, best_n, ordered_states, ordered_map, info
+        return best_model, best_n, ordered_states, ordered_map, info, scaler
 
     def _save_cache(
         self,
@@ -227,6 +236,7 @@ class HmmRegimeProvider:
         training_meta: dict[str, Any],
     ) -> None:
         payload = {
+            "_format_version": 2,
             "model": model,
             "ordered_map": ordered_map,
             "feature_index": [ts.isoformat() for ts in feature_index],
@@ -242,8 +252,14 @@ class HmmRegimeProvider:
         path = self._model_cache_path(symbol)
         if not path.exists():
             return None
-        with path.open("rb") as f:
-            return pickle.load(f)
+        try:
+            with path.open("rb") as f:
+                cache = pickle.load(f)
+            if cache.get("_format_version") != 2:
+                return None
+            return cache
+        except Exception:
+            return None
 
     # ──────────────────────────────────────────────────────────────────
     # Regime mapping
@@ -260,22 +276,35 @@ class HmmRegimeProvider:
             }
         return stats
 
-    def _label_for_state(self, state: int, state_stats: dict[int, dict[str, float]], total_states: int) -> tuple[str, str]:
-        s = state_stats[state]
-        vol_rank = state / max(1, total_states - 1)
-        cumret = s["cumulative_return"]
-        mom = s["momentum"]
-        vol = s["volatility"]
+    def _label_for_state(
+        self,
+        state: int,
+        state_stats: dict[int, dict[str, float]],
+        total_states: int,
+    ) -> tuple[str, str]:
+        """Map ordered HMM state to regime label.
 
-        if total_states >= 4 and state == total_states - 1:
-            return "risk_off", f"highest_vol_state vol={vol:.4f}"
-        if vol_rank >= 0.66 and (cumret < 0 or mom < 0):
-            return "bear", f"high_vol_negative_return vol={vol:.4f} cumret={cumret:.4f}"
-        if cumret > 0 and mom > 0 and vol_rank <= 0.5:
-            return "bull", f"positive_return_momentum vol={vol:.4f} cumret={cumret:.4f}"
-        if vol_rank >= 0.8:
-            return "risk_off", f"extreme_vol_without_trend vol={vol:.4f}"
-        return "sideways", f"mixed_state vol={vol:.4f} mom={mom:.4f}"
+        State 0 = lowest vol = typically bull/start of uptrend.
+        State max = highest vol = risk_off only if momentum/return negative,
+        otherwise may be volatile bull.
+        """
+        s = state_stats[state]
+        vol_rank = state / max(1, total_states - 1)  # 0=lowest, 1=highest
+        cumret = float(s["cumulative_return"])
+        mom = float(s["momentum"])
+        vol = float(s["volatility"])
+
+        # risk_off: extreme vol AND negative return AND negative momentum
+        if vol_rank >= 0.8 and cumret < 0 and mom < 0:
+            return "risk_off", f"high_vol_negative_trend vol={vol:.4f} cumret={cumret:.4f} mom={mom:.4f}"
+        # bear: declining with neg return/momentum (any vol level)
+        if cumret < 0 and mom < 0:
+            return "bear", f"negative_return_momentum vol={vol:.4f} cumret={cumret:.4f} mom={mom:.4f}"
+        # bull: rising with positive return and momentum (any vol)
+        if cumret > 0 and mom > 0:
+            return "bull", f"positive_trend vol={vol:.4f} cumret={cumret:.4f} mom={mom:.4f}"
+        # sideways: everything else
+        return "sideways", f"mixed_state vol={vol:.4f} cumret={cumret:.4f} mom={mom:.4f}"
 
     def _predict_current_state(self, model: GaussianHMM, ordered_map: dict[int, int], features: pd.DataFrame) -> tuple[int, np.ndarray]:
         X = features.values
@@ -306,7 +335,7 @@ class HmmRegimeProvider:
 
         cache = None if force_retrain else self._load_cache(symbol)
         if cache is None:
-            model, n_states, ordered_states, ordered_map, train_info = self.train_hmm(features)
+            model, n_states, ordered_states, ordered_map, train_info, _scaler = self.train_hmm(features)
             state_stats = self._state_stats(features, ordered_states)
             self._save_cache(symbol, model, ordered_map, features.index, ordered_states, state_stats, {**train_info, "rows": len(features)})
         else:
@@ -335,6 +364,7 @@ class HmmRegimeProvider:
             "cumulative_return": round(state_stats[state]["cumulative_return"], 6),
             "momentum": round(state_stats[state]["momentum"], 6),
             "bic": round(float(train_info["bic"]), 3),
+            "feature_scaling": "StandardScaler",
         }
         transition_probs = {f"state_{i}": round(float(p), 4) for i, p in enumerate(ordered_transition)}
 
@@ -370,7 +400,15 @@ class HmmRegimeProvider:
                         transition_probs={},
                     )
                 )
-        merged = min(snaps, key=lambda s: REGIME_PRIORITY.get(s.regime, 99)) if snaps else SymbolRegimeSnapshot("n/a", self.cfg.timeframe, "unknown", 0.0, 0, -1, "no_symbols", {}, {})
+        valid_snaps = [s for s in snaps if s.regime != "unknown"]
+        if not valid_snaps:
+            return MergedSnapshot(
+                regime="sideways",
+                confidence=0.0,
+                reason=f"all_hmm_regimes_unknown:{symbols}",
+                symbols=[asdict(s) for s in snaps],
+            )
+        merged = min(valid_snaps, key=lambda s: REGIME_PRIORITY.get(s.regime, 99))
         avg_conf = float(np.mean([s.confidence for s in snaps])) if snaps else 0.0
         return MergedSnapshot(
             regime=merged.regime,
@@ -389,7 +427,7 @@ class HmmRegimeProvider:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Crypto HMM regime provider (isolated Path B helper)")
-    p.add_argument("--symbols", default="SOLUSDT,XRPUSDT,BTCUSDT", help="comma-separated symbols")
+    p.add_argument("--symbols", default="SOLUSDT,XRPUSDT", help="comma-separated symbols")
     p.add_argument("--timeframe", default="4h", choices=["1h", "4h", "1d"])
     p.add_argument("--live-dir", default=str(DEFAULT_LIVE_DIR))
     p.add_argument("--models-dir", default=str(DEFAULT_MODELS_DIR))

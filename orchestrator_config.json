@@ -7,7 +7,7 @@
     "enabled": false,
     "timeframe": "4h",
     "force_retrain": false,
-    "symbols_override": ["SOLUSDT", "XRPUSDT", "BTCUSDT"]
+    "symbols_override": null
   },
   "risk": {
     "max_portfolio_drawdown_pct": 8.0,

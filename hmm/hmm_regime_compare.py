@@ -155,7 +155,7 @@ def compare(symbols: list[str], live_dir: Path, timeframe: str, force_retrain: b
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Compare heuristic regime detector vs HMM provider")
-    p.add_argument("--symbols", default="SOLUSDT,XRPUSDT,BTCUSDT")
+    p.add_argument("--symbols", default="SOLUSDT,XRPUSDT")
     p.add_argument("--timeframe", default="4h", choices=["1h", "4h", "1d"])
     p.add_argument("--live-dir", default=str(LIVE_DIR))
     p.add_argument("--output-json", default=str(OUTPUT_DIR / "hmm_vs_heuristic.json"))

@@ -37,6 +37,17 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _parse_iso_ts(ts_str: str) -> datetime | None:
+    """Parse ISO 8601 timestamp, strip TZ, return naive UTC."""
+    s = ts_str.strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(s).replace(tzinfo=None)
+    except Exception:
+        return None
+
+
 def load_json(path: Path, default: Any) -> Any:
     try:
         return json.loads(path.read_text())
@@ -183,39 +194,41 @@ def merge_regimes(regimes: list[dict[str, Any]]) -> dict[str, Any]:
 def resolve_regime(cfg: dict[str, Any]) -> dict[str, Any]:
     symbols = cfg.get("symbols", [cfg.get("base_symbol", "SOLUSDT")])
     hmm_cfg = cfg.get("hmm_regime", {}) or {}
-    if hmm_cfg.get("enabled"):
-        loaded = load_hmm_provider_class()
-        if loaded is not None:
-            HmmRegimeProvider, ProviderConfig = loaded
-            try:
-                provider = HmmRegimeProvider(
-                    live_dir=LIVE_DIR,
-                    cfg=ProviderConfig(
-                        timeframe=hmm_cfg.get("timeframe", "4h"),
-                        default_symbols=tuple(hmm_cfg.get("symbols_override") or symbols),
-                    ),
-                )
-                merged = provider.get_snapshot(
-                    symbols=list(hmm_cfg.get("symbols_override") or symbols),
-                    force_retrain=bool(hmm_cfg.get("force_retrain", False)),
-                )
-                out = {
-                    "regime": merged.regime,
-                    "confidence": merged.confidence,
-                    "reason": merged.reason,
-                    "symbols": merged.symbols,
-                    "source": "hmm",
-                    "timeframe": hmm_cfg.get("timeframe", "4h"),
-                }
-                if out["regime"] != "unknown":
-                    return out
-                out["fallback_note"] = "hmm_returned_unknown; falling back to heuristic"
-            except Exception as e:
-                out = {"fallback_note": f"hmm_error: {e}"}
-        else:
-            out = {"fallback_note": "hmm_provider_unavailable"}
+    snapshot_path = ROOT / "hmm" / "output" / "hmm_regime_snapshot.json"
+
+    out: dict[str, Any] = {}
+    if hmm_cfg.get("enabled") and snapshot_path.exists():
+        try:
+            data = json.loads(snapshot_path.read_text())
+            gen_at = data.get("generated_at", "")
+            if gen_at:
+                ts = _parse_iso_ts(gen_at)
+                if ts is not None:
+                    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+                    age_sec = (now_utc - ts).total_seconds()
+                    if age_sec > 7200:
+                        out = {"fallback_note": f"snapshot_stale_{int(age_sec)}s_old"}
+                    else:
+                        regime_val = data.get("regime", "unknown")
+                        out = {
+                            "regime": regime_val,
+                            "confidence": data.get("confidence", 0.0),
+                            "reason": data.get("reason", ""),
+                            "symbols": data.get("symbols", []),
+                            "source": "hmm_snapshot",
+                            "generated_at": gen_at,
+                        }
+                        if regime_val != "unknown":
+                            return out
+                        out["fallback_note"] = "hmm_snapshot_returned_unknown"
+                else:
+                    out = {"fallback_note": "snapshot_timestamp_unparseable"}
+            else:
+                out = {"fallback_note": "snapshot_missing_generated_at"}
+        except Exception as e:
+            out = {"fallback_note": f"snapshot_read_error: {e}"}
     else:
-        out = {}
+        out = {"fallback_note": "hmm_disabled_or_snapshot_missing"}
 
     regimes = [detect_regime(sym) for sym in symbols]
     merged = merge_regimes(regimes)
