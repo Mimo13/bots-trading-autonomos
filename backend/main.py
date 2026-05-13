@@ -559,6 +559,76 @@ def coinex_portfolio():
 
 
 # ──────────────────────────────────────────────
+# Portfolio Mirror — snapshot + rebalance system
+# ──────────────────────────────────────────────
+PORTFOLIO_SNAPSHOT = ROOT / 'runtime/portfolio/snapshot.json'
+PORTFOLIO_RUNS = ROOT / 'runtime/portfolio/runs'
+
+@app.get('/api/portfolio-mirror/status')
+def portfolio_mirror_status():
+    """Estado actual del Portfolio Mirror Bot."""
+    # Leer snapshot
+    snapshot = {'total_usd': 0, 'assets': [], 'captured_at': None}
+    if PORTFOLIO_SNAPSHOT.exists():
+        try:
+            snapshot = json.loads(PORTFOLIO_SNAPSHOT.read_text())
+        except Exception:
+            pass
+    # Leer último run
+    latest_run = None
+    latest_mtime = 0
+    if PORTFOLIO_RUNS.exists():
+        for entry in sorted(PORTFOLIO_RUNS.iterdir()):
+            if entry.name.startswith('portfolio_mirror_'):
+                s = entry / 'summary.json'
+                if s.exists() and s.stat().st_mtime > latest_mtime:
+                    latest_run = entry
+                    latest_mtime = s.stat().st_mtime
+    summary = None
+    if latest_run:
+        try:
+            summary = json.loads((latest_run / 'summary.json').read_text())
+        except Exception:
+            pass
+    # Performance desde BD
+    perf = _perf_summary('portfolio_mirror')
+    # Target allocation por régimen
+    from scripts.bot_orchestrator import detect_regime, merge_regimes
+    try:
+        regs = [detect_regime(s) for s in ['SOLUSDT','XRPUSDT','BNBUSDC']]
+        current_regime = merge_regimes(regs).get('regime', 'sideways')
+    except Exception:
+        current_regime = 'sideways'
+    targets = {'sideways': {'XRP':35,'PEPE':10,'USDC':30,'SOL':15,'HBAR':10},
+               'bull': {'XRP':40,'PEPE':15,'USDC':15,'SOL':20,'HBAR':10},
+               'bear': {'XRP':20,'PEPE':5,'USDC':55,'SOL':10,'HBAR':10}}
+    active_target = targets.get(current_regime, targets['sideways'])
+    return {'ok': True,
+            'snapshot': snapshot,
+            'current_regime': current_regime,
+            'targets': targets,
+            'active_target': active_target,
+            'latest_summary': summary,
+            'performance': perf}
+
+@app.get('/api/portfolio-mirror/history')
+def portfolio_mirror_history(limit: int = 30):
+    """Histórico de runs del Portfolio Mirror Bot."""
+    items = []
+    if PORTFOLIO_RUNS.exists():
+        for entry in sorted(PORTFOLIO_RUNS.iterdir(), reverse=True):
+            if entry.name.startswith('portfolio_mirror_'):
+                s = entry / 'summary.json'
+                if s.exists():
+                    try:
+                        items.append(json.loads(s.read_text()))
+                    except Exception:
+                        pass
+                if len(items) >= limit:
+                    break
+    return {'ok': True, 'items': items}
+
+# ──────────────────────────────────────────────
 # Shadow Mode — HMM vs Heuristic comparison
 # ──────────────────────────────────────────────
 @app.get("/api/shadow/status")

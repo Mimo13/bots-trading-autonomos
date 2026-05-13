@@ -258,6 +258,28 @@ def run() -> dict:
     if s10: status['scalp_summary'] = s10
     if tmp10.exists(): tmp10.unlink()
 
+    # Portfolio Mirror Bot — rebalanceo sistemático sobre el portfolio real de Binance
+    portfolio_runs = ROOT / 'runtime/portfolio/runs'
+    portfolio_runs.mkdir(parents=True, exist_ok=True)
+    out_pmb = portfolio_runs / f'portfolio_mirror_{ts}'
+    cfg_pmb = ROOT / 'portfolio_paper_config.json'
+    # Tomar régimen más reciente del orquestador si existe
+    regime = 'sideways'
+    state_path = ROOT / 'runtime/orchestrator/state.json'
+    if state_path.exists():
+        try:
+            sd = json.loads(state_path.read_text())
+            regime = sd.get('regime', {}).get('regime', 'sideways')
+        except Exception:
+            pass
+    cmd_pmb = [PYTHON, str(ROOT / 'portfolio_paper_bot.py'),
+               '--config', str(cfg_pmb),
+               '--output-dir', str(out_pmb),
+               '--regime', regime,
+               '--snapshot', str(ROOT / 'runtime/portfolio/snapshot.json')]
+    s_pmb = run_bot(cmd_pmb, 'portfolio_paper_bot', 'final_balance', status)
+    if s_pmb: status['portfolio_mirror_summary'] = s_pmb
+
     # Obsidian log (optional)
     subprocess.run(['python3', str(ROOT / 'update_obsidian_trading_log.py')],
                    capture_output=True, timeout=10)

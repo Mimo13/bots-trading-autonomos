@@ -1,0 +1,25 @@
+{
+  "bot_name": "portfolio_paper",
+  "cycle_ts": "2026-05-13T12:08:36Z",
+  "regime": "sideways",
+  "total_usd_snapshot": 206.82,
+  "total_usd_after": 206.82,
+  "cycle_pnl": 0.0569,
+  "trades_generated": 3,
+  "target_allocation": {
+    "XRP": 35.0,
+    "PEPE": 10.0,
+    "USDC": 30.0,
+    "SOL": 15.0,
+    "HBAR": 10.0
+  },
+  "allocation_used": {
+    "XRP": 35.0,
+    "PEPE": 10.0,
+    "USDC": 30.0,
+    "SOL": 15.0,
+    "HBAR": 10.0
+  },
+  "final_balance": 206.82,
+  "final_equity": 206.82
+}

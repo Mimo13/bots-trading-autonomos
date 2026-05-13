@@ -796,6 +796,63 @@ def main():
         load_latest_spot_long_bot(conn, 'bnb_spot_long', 'bnb_spot_long', 'BNBUSDC')
         load_latest_grid_bot(conn, 'bnb_grid', 'bnb_grid', 'BNB')
         load_generic_run_bot(conn, 'tv_sol', 'tv_')
+        load_portfolio_paper(conn)
+
+
+def load_portfolio_paper(conn):
+    """Portfolio Mirror Bot — lee de runtime/portfolio/runs/portfolio_mirror_*"""
+    runs = ROOT / 'runtime/portfolio/runs'
+    if not runs.exists():
+        return
+    # Buscar el run más reciente
+    latest = None
+    latest_mtime = 0
+    for entry in sorted(runs.iterdir()):
+        if entry.name.startswith('portfolio_mirror_'):
+            summary = entry / 'summary.json'
+            if summary.exists() and summary.stat().st_mtime > latest_mtime:
+                latest = entry
+                latest_mtime = summary.stat().st_mtime
+    if latest is None:
+        return
+    bot_name = 'portfolio_mirror'
+    # Cargar trades
+    tl = latest / 'trades_log.csv'
+    if tl.exists():
+        with tl.open() as f:
+            for x in csv.DictReader(f):
+                ts_str = x.get('ts', '')
+                try:
+                    ts = parse_ts(ts_str)
+                except Exception:
+                    continue
+                pnl = float(x.get('pnl', 0) or 0)
+                side = (x.get('side') or '').upper()
+                qty = float(x.get('qty', 0) or 0)
+                usd = float(x.get('usd_amount', 0) or abs(pnl) or 0)
+                symbol = x.get('symbol', '?')
+                raw = x
+                if side == 'BUY':
+                    result = ''
+                elif side == 'SELL':
+                    result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                else:
+                    result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
+                conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
+                values(%s,%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
+                             [bot_name, ts, side, qty, usd, pnl, result, json.dumps(raw)])
+    # Balance desde summary
+    balance = 206.82  # default desde snapshot
+    try:
+        d = json.loads((latest / 'summary.json').read_text())
+        balance = float(d.get('final_balance', d.get('final_equity', 206.82)))
+    except Exception:
+        pass
+    # Calcular PnL day/week desde trades reales
+    pnl_day, pnl_week = _pnl_day_week(conn, bot_name)
+    running = True  # el bot corre con el runner
+    upsert_status(conn, bot_name, is_running=running, balance=round(balance, 2),
+                  pnl_day=round(pnl_day, 6), pnl_week=round(pnl_week, 6), tokens=0)
 
 
 if __name__ == '__main__':

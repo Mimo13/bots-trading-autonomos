@@ -1,0 +1,62 @@
+{
+  "captured_at": "2026-05-13T14:06:00+02:00",
+  "total_usd": 206.8237924331344,
+  "assets": [
+    {
+      "asset": "LDXRP",
+      "free": 73.85015544,
+      "locked": 0.0,
+      "usd_value": 106.97195015483999,
+      "pct": 51.72
+    },
+    {
+      "asset": "LDPEPE",
+      "free": 10314167.28,
+      "locked": 0.0,
+      "usd_value": 43.0100775576,
+      "pct": 20.8
+    },
+    {
+      "asset": "LDUSDC",
+      "free": 21.61492674,
+      "locked": 0.0,
+      "usd_value": 21.617304381941402,
+      "pct": 10.45
+    },
+    {
+      "asset": "LDSOL",
+      "free": 0.2245731,
+      "locked": 0.0,
+      "usd_value": 21.233386605,
+      "pct": 10.27
+    },
+    {
+      "asset": "LDHBAR",
+      "free": 141.58330775,
+      "locked": 0.0,
+      "usd_value": 13.219633444617498,
+      "pct": 6.39
+    },
+    {
+      "asset": "LDTOWNS",
+      "free": 186.91223305,
+      "locked": 0.0,
+      "usd_value": 0.669145794319,
+      "pct": 0.32
+    },
+    {
+      "asset": "LDADA",
+      "free": 0.31034732,
+      "locked": 0.0,
+      "usd_value": 0.084135158452,
+      "pct": 0.04
+    },
+    {
+      "asset": "LDLAYER",
+      "free": 0.11377394,
+      "locked": 0.0,
+      "usd_value": 0.0119462637,
+      "pct": 0.01
+    }
+  ]
+}

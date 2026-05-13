@@ -1,0 +1,27 @@
+{
+  "rebalance_threshold_pct": 5.0,
+  "min_rebalance_usd": 1.0,
+  "max_trades_per_cycle": 6,
+  "targets_sideways": {
+    "XRP": 35.0,
+    "PEPE": 10.0,
+    "USDC": 30.0,
+    "SOL": 15.0,
+    "HBAR": 10.0
+  },
+  "targets_bull": {
+    "XRP": 40.0,
+    "PEPE": 15.0,
+    "USDC": 15.0,
+    "SOL": 20.0,
+    "HBAR": 10.0
+  },
+  "targets_bear": {
+    "XRP": 20.0,
+    "PEPE": 5.0,
+    "USDC": 55.0,
+    "SOL": 10.0,
+    "HBAR": 10.0
+  },
+  "initial_balance": 206.82
+}
