@@ -17,7 +17,7 @@
     "max_portfolio_drawdown_pct": 8.0,
     "max_daily_loss_usd": 10.0,
     "min_win_rate_for_auto_run": 0.45,
-    "min_closed_trades_for_confidence": 5
+    "min_closed_trades_for_confidence": 10
   },
   "auto_pause": {
     "max_consecutive_losses": 5,

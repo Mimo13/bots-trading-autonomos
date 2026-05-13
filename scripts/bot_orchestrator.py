@@ -523,10 +523,24 @@ def run() -> dict[str, Any]:
     guard = portfolio_guardrails(items, cfg)
     if guard["risk_mode"] or overall_regime == "risk_off":
         for item in items:
-            if not item.get("test_candidate") and item["recommended_action"] != "PAUSE":
-                item["recommended_action"] = "PAUSE"
-                if "PORTFOLIO_GUARD" not in item["reason_codes"]:
-                    item["reason_codes"].append("PORTFOLIO_GUARD")
+            if item.get("test_candidate"):
+                continue
+            if overall_regime == "risk_off":
+                # Crisis real — pausar todo
+                if item["recommended_action"] != "PAUSE":
+                    item["recommended_action"] = "PAUSE"
+                    if "PORTFOLIO_GUARD" not in item["reason_codes"]:
+                        item["reason_codes"].append("PORTFOLIO_GUARD")
+            elif item["score"] < 60:
+                # Riesgo de cartera — solo pausar bots con rendimiento pobre
+                if item["recommended_action"] != "PAUSE":
+                    item["recommended_action"] = "PAUSE"
+                    if "PORTFOLIO_GUARD" not in item["reason_codes"]:
+                        item["reason_codes"].append("PORTFOLIO_GUARD")
+            elif item["score"] >= 60:
+                # Bots sólidos — no pausar, solo marcar
+                if "PORTFOLIO_GUARD_PROTECTED" not in item["reason_codes"]:
+                    item["reason_codes"].append("PORTFOLIO_GUARD_PROTECTED")
 
     items.sort(key=lambda x: x["score"], reverse=True)
     applied = apply_logical_actions(items, cfg)
