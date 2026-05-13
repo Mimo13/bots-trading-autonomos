@@ -490,6 +490,9 @@ def apply_logical_actions(items: list[dict[str, Any]], cfg: dict[str, Any]) -> l
                         cur.execute("update bot_status set is_running=false, updated_at=now() where bot_name=%s", [item["name"]])
                         paused.add(item["name"])
                         applied.append({"bot": item["name"], "action": "set_running_false"})
+                    elif action == "MONITOR" and item["name"] in paused and item["score"] >= 48:
+                        paused.discard(item["name"])
+                        applied.append({"bot": item["name"], "action": "unpaused_from_monitor"})
         _write_paused(paused)
     except Exception as e:
         applied.append({"error": str(e)[:180]})

@@ -321,3 +321,133 @@
   - notes: poly run ok | portfolio run ok | fabian run ok | fabianpro run ok | turtle run ok | turtle parse failed
 - cTrader signal CSV: ✅ exists (age_s=82880)
 - Obsidian trading note: ✅ exists (age_s=0)
+## Supervisión 2026-05-11T18:01:43.201445Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=2)
+- Obsidian trading note: ✅ exists (age_s=121570)
+## Supervisión 2026-05-12T00:15:06.181322Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=2)
+- Obsidian trading note: ✅ exists (age_s=143973)
+## Supervisión 2026-05-12T04:04:45.662430Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=2)
+- Obsidian trading note: ✅ exists (age_s=157753)
+## Supervisión 2026-05-12T04:05:14.982601Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=2)
+- Obsidian trading note: ✅ exists (age_s=157782)
+## Supervisión 2026-05-12T06:05:23.285947Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=3)
+- Obsidian trading note: ✅ exists (age_s=164991)
+## Supervisión 2026-05-12T08:06:14.754523Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=3)
+- Obsidian trading note: ✅ exists (age_s=172242)
+## Supervisión 2026-05-12T12:05:42.940414Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=3)
+- Obsidian trading note: ✅ exists (age_s=186610)
+## Supervisión 2026-05-12T14:01:29.900191Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=3)
+- Obsidian trading note: ✅ exists (age_s=193557)
+## Supervisión 2026-05-12T16:08:32.578269Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=4)
+- Obsidian trading note: ✅ exists (age_s=201181)
+## Supervisión 2026-05-13T00:03:51.887446Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=3)
+- Obsidian trading note: ✅ exists (age_s=229699)
+## Supervisión 2026-05-13T02:01:30.340636Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=3)
+- Obsidian trading note: ✅ exists (age_s=236757)
+## Supervisión 2026-05-13T04:02:51.849195Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=3)
+- Obsidian trading note: ✅ exists (age_s=244039)
+## Supervisión 2026-05-13T04:04:32.170504Z
+
+- Runner: ✅ OK
+  - ctrader_signal_written: True
+  - polymarket_enriched: None
+  - polymarket_simulated: None
+  - obsidian_updated: None
+  - notes: feed SOLUSDT: ok | feed XRPUSDT: ok | feed BNBUSDC: ok | feed ADAUSDT: ok | feed DOGEUSDT: ok | feed BTCUSDT: ok | poly run ok | pfolio run ok | pfolio parse failed | fabian_spot_long run ok | fabianpro run ok | sol_pb run ok | sol_pb parse failed | xrp_grid run ok | xrp_grid parse failed | bnb_spot_long run ok | bnb_grid run ok | bnb_grid parse failed | grid advisor started | mtfreg run ok | boxbr run ok | scalp run ok
+- cTrader signal CSV: ✅ exists (age_s=2)
+- Obsidian trading note: ✅ exists (age_s=244139)
