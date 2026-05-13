@@ -312,7 +312,7 @@ def weekly_compare():
              coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
-        and bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp')  # poly ARCHIVADO 2026-05-13
+        and bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp')
       group by bot_name
     ''')
 
@@ -566,10 +566,11 @@ def shadow_status():
     """Current regime: orchestrator heuristic vs HMM snapshot."""
     import json as _j
     from pathlib import Path
+    from scripts.bot_orchestrator import detect_regime, merge_regimes, load_json, utc_now
+    CONFIG = ROOT / "orchestrator_config.json"
     cfg = load_json(CONFIG, {})
     # Heuristic result
     symbols = cfg.get("symbols", ["SOLUSDT"])
-    from scripts.bot_orchestrator import detect_regime, merge_regimes
     heur_regimes = [detect_regime(s) for s in symbols]
     heur_merged = merge_regimes(heur_regimes)
     # HMM snapshot
@@ -633,6 +634,7 @@ def shadow_history(limit: int = 100):
 def shadow_log():
     """Write current shadow comparison to history log."""
     status = shadow_status()
+    from scripts.bot_orchestrator import utc_now
     SHADOW_LOG.parent.mkdir(parents=True, exist_ok=True)
     with SHADOW_LOG.open("a", encoding="utf-8") as f:
         entry = {
