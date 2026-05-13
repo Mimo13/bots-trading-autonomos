@@ -254,3 +254,7 @@
 2026-05-13T11:55:04.575027Z | scripts/strategy_ab_sim.py OK
 2026-05-13T11:55:04.670120Z | scripts/strategy_promote.py OK
 2026-05-13T11:55:04.677734Z | promotion decision=hold (no apply)
+2026-05-13T13:55:05.098792Z | scripts/strategy_advisor.py OK
+2026-05-13T13:55:05.280839Z | scripts/strategy_ab_sim.py OK
+2026-05-13T13:55:05.383558Z | scripts/strategy_promote.py OK
+2026-05-13T13:55:05.391001Z | promotion decision=hold (no apply)

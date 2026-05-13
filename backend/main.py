@@ -628,6 +628,22 @@ def portfolio_mirror_history(limit: int = 30):
                     break
     return {'ok': True, 'items': items}
 
+PORTFOLIO_DECISIONS = ROOT / 'runtime/portfolio/decisions.jsonl'
+
+@app.get('/api/portfolio-mirror/decisions')
+def portfolio_mirror_decisions(limit: int = 50):
+    """Decisiones del Portfolio Mirror Bot (qué investigó, por qué tradeó o no)."""
+    if not PORTFOLIO_DECISIONS.exists():
+        return {'ok': True, 'items': []}
+    lines = PORTFOLIO_DECISIONS.read_text().strip().split('\n')
+    items = []
+    for line in lines[-max(1, min(limit, 200)):]:
+        try:
+            items.append(json.loads(line))
+        except Exception:
+            pass
+    return {'ok': True, 'items': items}
+
 # ──────────────────────────────────────────────
 # Shadow Mode — HMM vs Heuristic comparison
 # ──────────────────────────────────────────────
