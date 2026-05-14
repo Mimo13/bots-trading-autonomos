@@ -258,6 +258,17 @@ def run() -> dict:
     if s10: status['scalp_summary'] = s10
     if tmp10.exists(): tmp10.unlink()
 
+    # Paper Fleet Orchestrator — update regime before Portfolio Mirror reads targets.
+    try:
+        cp_orch = subprocess.run([PYTHON, str(ROOT / 'scripts/bot_orchestrator.py')],
+                                 cwd=ROOT, capture_output=True, text=True, timeout=30)
+        status['orchestrator_ran'] = (cp_orch.returncode == 0)
+        if cp_orch.returncode != 0:
+            status['notes'].append(f'orchestrator error: {cp_orch.stderr.strip()[:150]}')
+    except Exception as e:
+        status['orchestrator_ran'] = False
+        status['notes'].append(f'orchestrator exception: {str(e)[:120]}')
+
     # Portfolio Mirror Bot — rebalanceo sistemático sobre el portfolio real de Binance
     portfolio_runs = ROOT / 'runtime/portfolio/runs'
     portfolio_runs.mkdir(parents=True, exist_ok=True)
@@ -283,19 +294,6 @@ def run() -> dict:
     # Obsidian log (optional)
     subprocess.run(['python3', str(ROOT / 'update_obsidian_trading_log.py')],
                    capture_output=True, timeout=10)
-
-    # 11. Paper Fleet Orchestrator — isolated observer/recommender layer.
-    # It writes runtime/orchestrator/state.json and never places orders. By default
-    # apply_actions=false, so failures/recommendations cannot disturb existing bots.
-    try:
-        cp_orch = subprocess.run([PYTHON, str(ROOT / 'scripts/bot_orchestrator.py')],
-                                 cwd=ROOT, capture_output=True, text=True, timeout=30)
-        status['orchestrator_ran'] = (cp_orch.returncode == 0)
-        if cp_orch.returncode != 0:
-            status['notes'].append(f'orchestrator error: {cp_orch.stderr.strip()[:150]}')
-    except Exception as e:
-        status['orchestrator_ran'] = False
-        status['notes'].append(f'orchestrator exception: {str(e)[:120]}')
 
     status_path = ROOT / 'runtime/polymarket/last_runner_status.json'
     status_path.parent.mkdir(parents=True, exist_ok=True)
