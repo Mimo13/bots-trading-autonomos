@@ -1,9 +1,9 @@
 {
-  "risk_percent": 3.0,
+  "risk_percent": 5.0,
   "reduced_risk_percent": 1.5,
   "max_daily_loss_pct": 10.0,
   "max_trades_per_session": 4,
-  "max_trades_per_day": 8,
+  "max_trades_per_day": 6,
   "min_rr": 1.0,
   "sl_buffer_pips": 0.1,
   "enable_trailing": true,
@@ -18,5 +18,8 @@
   "pending_order_expiry_minutes": 60,
   "initial_balance": 100.0,
   "crypto_mode": true,
-  "avoid_first_session_minutes": 0
+  "avoid_first_session_minutes": 0,
+  "atr_sl_min_mult": 1.5,
+  "atr_period": 14,
+  "max_concurrent_positions": 1
 }

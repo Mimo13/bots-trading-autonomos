@@ -54,6 +54,7 @@ class FabianConfig:
     enable_trailing: bool = True
     enable_break_even_at_1r: bool = True
     spot_long_only: bool = False  # Paper/live spot mode: disable SELL_STOP/SHORT plans
+    min_position_usd: float = 20.0  # minimum position size to avoid micro-trades from leftovers
 
     # Structure
     swing_lookback: int = 3
@@ -71,6 +72,11 @@ class FabianConfig:
     ny_start: Tuple[int, int] = (13, 30)
     ny_end: Tuple[int, int] = (20, 0)
     avoid_first_session_minutes: int = 15
+
+    # ATR-based risk floor — ensures meaningful PnL per trade
+    atr_period: int = 14
+    atr_sl_min_mult: float = 1.0      # SL distance >= ATR * this (0=disabled)
+    min_sl_distance_pct: float = 0.0  # absolute minimum SL distance as % of price
 
     # General
     max_spread_pips: float = 2.0
@@ -90,6 +96,18 @@ class TradePlan:
     session: str
     reason: str
     expiry_idx: int
+
+
+def compute_atr(highs: List[float], lows: List[float], closes: List[float], period: int = 14) -> float:
+    if len(closes) < period + 1:
+        return 0.01
+    tr = []
+    for i in range(1, len(closes)):
+        h_l = highs[i] - lows[i]
+        h_pc = abs(highs[i] - closes[i - 1])
+        l_pc = abs(lows[i] - closes[i - 1])
+        tr.append(max(h_l, h_pc, l_pc))
+    return sum(tr[-period:]) / period
 
 
 def find_swing_highs(closes: List[float], highs: List[float], lows: List[float],
@@ -242,7 +260,8 @@ def find_entry_zone(structure: str, breakout_idx: int, candles: List[Candle]) ->
 def build_trade_plan(structure: str, entry_zone: Tuple[float, float],
                      structural_level: float, body_avg: float, cfg: FabianConfig,
                      candle: Candle, session: str, expiry_idx: int,
-                     current_balance: Optional[float] = None) -> Optional[TradePlan]:
+                     current_balance: Optional[float] = None,
+                     atr: float = 0.0) -> Optional[TradePlan]:
     """Build trade plan with SL, TP, and position size."""
     entry, zone_edge = entry_zone
     buffer = cfg.sl_buffer_pips * 0.0001 if candle.close > 10 else cfg.sl_buffer_pips * 0.001
@@ -255,6 +274,15 @@ def build_trade_plan(structure: str, entry_zone: Tuple[float, float],
         risk_pips = entry - sl
         if risk_pips <= 0:
             return None
+        # Enforce minimum risk distance (ATR-based or % of price)
+        min_risk = 0.0
+        if atr > 0 and cfg.atr_sl_min_mult > 0:
+            min_risk = max(min_risk, atr * cfg.atr_sl_min_mult)
+        if cfg.min_sl_distance_pct > 0:
+            min_risk = max(min_risk, entry * cfg.min_sl_distance_pct / 100.0)
+        if risk_pips < min_risk:
+            risk_pips = min_risk
+            sl = entry - risk_pips  # widen SL to meet minimum
         tp = entry + risk_pips * cfg.min_rr
         reward_pips = tp - entry
         action = "BUY_STOP"
@@ -263,6 +291,15 @@ def build_trade_plan(structure: str, entry_zone: Tuple[float, float],
         risk_pips = sl - entry
         if risk_pips <= 0:
             return None
+        # Enforce minimum risk distance (ATR-based or % of price)
+        min_risk = 0.0
+        if atr > 0 and cfg.atr_sl_min_mult > 0:
+            min_risk = max(min_risk, atr * cfg.atr_sl_min_mult)
+        if cfg.min_sl_distance_pct > 0:
+            min_risk = max(min_risk, entry * cfg.min_sl_distance_pct / 100.0)
+        if risk_pips < min_risk:
+            risk_pips = min_risk
+            sl = entry + risk_pips  # widen SL to meet minimum
         tp = entry - risk_pips * cfg.min_rr
         reward_pips = entry - tp
         action = "SELL_STOP"
@@ -280,7 +317,7 @@ def build_trade_plan(structure: str, entry_zone: Tuple[float, float],
     raw_volume = risk_amount / risk_pips if risk_pips > 0 else 0
     
     # Spot cap: max tokens we can buy with available cash (95% to leave fee buffer)
-    max_notional = live_balance * 0.95
+    max_notional = live_balance * 0.98
     max_volume = max_notional / entry if entry > 0 else raw_volume
     volume = min(raw_volume, max_volume)
     
@@ -556,13 +593,23 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                             reason = "NO_ZONE"
                         else:
                             # Build trade plan
+                            # Compute ATR for min SL floor
+                            atr_val = compute_atr(
+                                [c.high for c in candles[:i+1]],
+                                [c.low for c in candles[:i+1]],
+                                [c.close for c in candles[:i+1]],
+                                cfg.atr_period
+                            ) if cfg.atr_period > 0 else 0.0
                             plan = build_trade_plan(
                                 structure, zone, broken_level, body_avg, cfg, c, session,
                                 i + cfg.pending_order_expiry_minutes,
-                                current_balance=balance
+                                current_balance=balance,
+                                atr=atr_val
                             )
                             if plan is None:
                                 reason = "INVALID_PLAN"
+                            elif plan.volume * plan.entry < cfg.min_position_usd:
+                                reason = "POSITION_TOO_SMALL"
                             else:
                                 action = f"PLACE_{plan.action}"
                                 open_positions.append(plan)
@@ -596,9 +643,11 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                           "entry": 0, "sl": 0, "tp": 0, "rr": 0,
                           "balance": round(balance, 2)})
             
-            # Track drawdown
-            peak_balance = max(peak_balance, balance)
-            dd = (peak_balance - balance) / peak_balance * 100 if peak_balance > 0 else 0
+            # Track drawdown using equity (balance + open position value)
+            open_value = sum(p["volume"] * c.close for p in filled_positions if "exit_ts" not in p)
+            equity = balance + open_value
+            peak_balance = max(peak_balance, equity)
+            dd = (peak_balance - equity) / peak_balance * 100 if peak_balance > 0 else 0
             max_dd = max(max_dd, dd)
     
     # Summary
