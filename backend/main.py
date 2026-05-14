@@ -835,6 +835,32 @@ date: {date_str}
     filepath.write_text(content)
     return {'ok': True, 'file': filename, 'path': str(filepath)}
 
+
+@app.get('/api/sherlock/requests')
+def list_sherlock_requests():
+    req_dir = ANALYSIS_DIR / 'requests'
+    req_dir.mkdir(parents=True, exist_ok=True)
+    done_dir = req_dir / 'done'
+    items = []
+    for p in sorted(req_dir.glob('REQ__*.md'), key=lambda x: x.stat().st_mtime, reverse=True):
+        if p.parent.name == 'done':
+            continue
+        text = p.read_text(encoding='utf-8')
+        meta, body = _parse_analysis_frontmatter(text)
+        title = meta.get('title') or p.name
+        # Check if body has more than just the template (has content added by Sherlock)
+        has_content = len(body.strip()) > 250
+        items.append({'id': p.name, 'title': title, 'status': 'hecho' if has_content else 'pendiente',
+                      'date': meta.get('date', ''), 'file': p.name, 'body': body.strip() if has_content else ''})
+    if done_dir.exists():
+        for p in sorted(done_dir.glob('REQ__*.md'), key=lambda x: x.stat().st_mtime, reverse=True):
+            text = p.read_text(encoding='utf-8')
+            meta, body = _parse_analysis_frontmatter(text)
+            title = meta.get('title') or p.name
+            items.append({'id': p.name, 'title': title, 'status': 'hecho',
+                          'date': meta.get('date', ''), 'file': p.name, 'body': ''})
+    return {'items': items}
+
 @app.get("/api/shadow/history")
 def shadow_history(limit: int = 100):
     """Historical shadow mode comparisons."""
