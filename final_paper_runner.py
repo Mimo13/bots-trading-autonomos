@@ -49,7 +49,7 @@ def run() -> dict:
         'ts_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         'ctrader_signal_written': False,
         'notes': [],
-        'archived_skipped': ['fabian_py (→fabian_spot_long)', 'fabianpro', 'mtfreg', 'boxbr', 'scalp'],
+        'archived_skipped': ['fabian_py (→fabian_spot_long)', 'fabianpro', 'mtfreg', 'boxbr', 'scalp', 'pfolio'],
     }
 
     # cTrader signal (always runs, independent)
@@ -96,18 +96,10 @@ def run() -> dict:
     if s: status['poly_summary'] = s
     if tmp.exists(): tmp.unlink()
 
-    # 2. PolyPortfolioPaper v2 — RSI-based (reactivado 2026-05-10)
-    PFOLIO_CONFIG = ROOT / 'pfolio_config.json'
-    tmp2 = POLY_RUNS_DIR / f'_cfg_pfolio_{ts}.json'
-    if PFOLIO_CONFIG.exists():
-        import shutil
-        shutil.copy2(str(PFOLIO_CONFIG), str(tmp2))
-    out2 = POLY_RUNS_DIR / f'pfolio_{ts}'
-    cmd2 = [PYTHON, str(ROOT / 'polymarket_portfolio_bot.py'),
-            '--input', str(poly_input), '--config', str(tmp2), '--output-dir', str(out2)]
-    s2 = run_bot(cmd2, 'pfolio', 'final_balance', status)
-    if s2: status['pfolio_summary'] = s2
-    if tmp2.exists(): tmp2.unlink()
+    # [ARCHIVADO 2026-05-14] SOL Portfolio Spot (pfolio) — RSI simple sobre SOL.
+    # Resultado: -$0.54 7d, 94 trades, WR 53.2%, edge negativo tras costes/timeout.
+    # Aprendizaje: RSI mean-reversion 5m sin filtro de régimen/tendencia queda en churn;
+    # sustituido por SolPullbackBot, FabianSpotLong y Portfolio Mirror.
 
     # [ARCHIVADO 2026-05-11] FabiánPullback Python — estructura/ruptura con shorts
     # Reemplazado por FabianSpotLong (3b). Los shorts no son replicables en spot.

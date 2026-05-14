@@ -788,7 +788,7 @@ def main():
         ensure_schema(conn)
         load_poly(conn)
         load_sol_pb(conn)
-        load_pfolio(conn)  # reactivado 2026-05-10: RSI-based
+        # load_pfolio(conn) — ARCHIVADO 2026-05-14: RSI SOL sin edge; ver MEMORY.md
         # load_fabian_py(conn) — ARCHIVADO 2026-05-11: shorts irrealistas, usar fabian_spot_long
         load_fabian_spot_long(conn)
         # load_fabianpro(conn) — ARCHIVADO 2026-05-11: shorts + rendimiento mediocre
