@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bta.xrp-swing-15m</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/mimo13/bots-trading-autonomos-runtime/.venv/bin/python3</string>
+        <string>/Users/mimo13/bots-trading-autonomos-runtime/scripts/xrp_swing_monitor.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/mimo13/bots-trading-autonomos-runtime</string>
+    <key>StandardOutPath</key>
+    <string>/Users/mimo13/bots-trading-autonomos-runtime/runtime/logs/xrp_swing.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/mimo13/bots-trading-autonomos-runtime/runtime/logs/xrp_swing.err.log</string>
+    <key>StartInterval</key>
+    <integer>900</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
