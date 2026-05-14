@@ -394,6 +394,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                 if plan.action == "BUY_STOP":
                     if c.high >= plan.entry:
                         # Fill at entry
+                        cost = plan.volume * plan.entry
+                        balance -= cost
                         filled_positions.append({
                             "ts": c.ts.isoformat(), "action": plan.action,
                             "entry": plan.entry, "sl": plan.sl, "tp": plan.tp,
@@ -406,7 +408,7 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                                       "entry": round(plan.entry, 6), "exit": "",
                                       "sl": round(plan.sl, 6), "tp": round(plan.tp, 6),
                                       "pnl": 0.0, "rr": round(plan.rr, 2), "reason": "ENTRY_BUY",
-                                      "qty": round(plan.volume / max(plan.entry, 0.000001), 6)})
+                                      "qty": round(plan.volume, 6)})
                 elif plan.action == "SELL_STOP":
                     if c.low <= plan.entry:
                         filled_positions.append({
@@ -421,7 +423,7 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                                       "entry": round(plan.entry, 6), "exit": "",
                                       "sl": round(plan.sl, 6), "tp": round(plan.tp, 6),
                                       "pnl": 0.0, "rr": round(plan.rr, 2), "reason": "ENTRY_SHORT",
-                                      "qty": round(plan.volume / max(plan.entry, 0.000001), 6)})
+                                      "qty": round(plan.volume, 6)})
                 
                 # Expiry
                 if plan.expiry_idx <= i:
@@ -439,7 +441,8 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                         pos["exit"] = pos["sl"]
                         pnl = vol * (pos["sl"] - pos["entry"])
                         pos["pnl"] = pnl
-                        balance += pnl
+                        # Return cost basis + PnL (often a loss)
+                        balance += pnl + vol * pos["entry"]
                         daily_realized_pnl += pnl
                         if pnl > 0: wins += 1; consecutive_losses = 0
                         else: losses += 1; consecutive_losses += 1
@@ -448,13 +451,14 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                                       "entry": round(pos["entry"], 6), "exit": round(pos["sl"], 6),
                                       "sl": round(pos["sl"], 6), "tp": round(pos["tp"], 6),
                                       "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "SL_HIT",
-                                      "qty": round(vol / max(pos["entry"], 0.000001), 6)})
+                                      "qty": round(vol, 6)})
                     elif c.high >= pos["tp"]:
                         pos["exit_ts"] = c.ts.isoformat()
                         pos["exit"] = pos["tp"]
                         pnl = vol * (pos["tp"] - pos["entry"])
                         pos["pnl"] = pnl
-                        balance += pnl
+                        # Return cost basis + PnL
+                        balance += pnl + vol * pos["entry"]
                         daily_realized_pnl += pnl
                         if pnl > 0: wins += 1; consecutive_losses = 0
                         else: losses += 1; consecutive_losses += 1
@@ -463,7 +467,7 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                                       "entry": round(pos["entry"], 6), "exit": round(pos["tp"], 6),
                                       "sl": round(pos["sl"], 6), "tp": round(pos["tp"], 6),
                                       "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "TP_HIT",
-                                      "qty": round(vol / max(pos["entry"], 0.000001), 6)})
+                                      "qty": round(vol, 6)})
                         
                 elif pos["action"] == "SELL_STOP":
                     vol = float(pos.get("volume", 0))
@@ -481,7 +485,7 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                                       "entry": round(pos["entry"], 6), "exit": round(pos["sl"], 6),
                                       "sl": round(pos["sl"], 6), "tp": round(pos["tp"], 6),
                                       "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "SL_HIT",
-                                      "qty": round(vol / max(pos["entry"], 0.000001), 6)})
+                                      "qty": round(vol, 6)})
                     elif c.low <= pos["tp"]:
                         pos["exit_ts"] = c.ts.isoformat()
                         pos["exit"] = pos["tp"]
@@ -496,7 +500,7 @@ def run_simulation(candles: List[Candle], cfg: FabianConfig, out_dir: Path) -> D
                                       "entry": round(pos["entry"], 6), "exit": round(pos["tp"], 6),
                                       "sl": round(pos["sl"], 6), "tp": round(pos["tp"], 6),
                                       "pnl": round(pnl, 4), "rr": round(pos["rr"], 2), "reason": "TP_HIT",
-                                      "qty": round(vol / max(pos["entry"], 0.000001), 6)})
+                                      "qty": round(vol, 6)})
             
             # Hard gates — can we trade?
             if session == "NONE":
