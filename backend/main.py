@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 import os, subprocess, csv, json, urllib.request, urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timezone
 from decimal import Decimal
 from pathlib import Path
 from fastapi import FastAPI
@@ -699,6 +699,141 @@ def shadow_status():
 
 SHADOW_LOG = ROOT / "runtime" / "orchestrator" / "shadow_log.jsonl"
 
+
+
+ANALYSIS_DIR = ROOT / "analisis"
+
+
+def _parse_analysis_frontmatter(text: str):
+    meta = {}
+    body = text
+    if text.startswith('---\n'):
+        end = text.find('\n---\n', 4)
+        if end != -1:
+            fm = text[4:end]
+            body = text[end + 5:]
+            for line in fm.splitlines():
+                if ':' not in line:
+                    continue
+                k, v = line.split(':', 1)
+                k = k.strip().lower()
+                v = v.strip()
+                if k == 'tags':
+                    if v.startswith('[') and v.endswith(']'):
+                        vals = [x.strip().strip('"\'') for x in v[1:-1].split(',') if x.strip()]
+                        meta[k] = vals
+                    else:
+                        meta[k] = [x.strip() for x in v.split(',') if x.strip()]
+                else:
+                    meta[k] = v.strip('"\'')
+    return meta, body
+
+
+def _fallback_title(body: str, file_name: str) -> str:
+    for ln in body.splitlines():
+        ln = ln.strip()
+        if ln.startswith('#'):
+            return ln.lstrip('#').strip()
+    return file_name.rsplit('.',1)[0].replace('_', ' ').replace('-', ' ').strip()
+
+
+def _fallback_summary(body: str, max_len: int = 180) -> str:
+    for ln in body.splitlines():
+        t = ln.strip()
+        if not t or t.startswith('#'):
+            continue
+        if len(t) > max_len:
+            return t[:max_len-1].rstrip() + '\u2026'
+        return t
+    return 'Sin resumen todav\u00eda.'
+
+
+@app.get('/api/analisis')
+def list_analisis():
+    ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+    items = []
+    for p in sorted(ANALYSIS_DIR.glob('*.md'), key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            text = p.read_text(encoding='utf-8')
+        except Exception:
+            continue
+        meta, body = _parse_analysis_frontmatter(text)
+        st = p.stat()
+        title = meta.get('title') or _fallback_title(body, p.name)
+        summary = meta.get('summary') or _fallback_summary(body)
+        tags = meta.get('tags') or ['analisis']
+        if '__' in p.name:
+            prefix = p.name.split('__', 1)[0].lower()
+            if prefix and prefix not in tags:
+                tags = [prefix] + tags
+        date = meta.get('date') or datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat()
+        items.append({
+            'id': p.name, 'file': p.name, 'title': title,
+            'summary': summary, 'tags': tags,
+            'date': date,
+            'updated_at': datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(),
+        })
+    return {'items': items}
+
+
+@app.get('/api/analisis/read-status')
+def analisis_read_status():
+    return {"read_ids": []}
+
+
+@app.get('/api/analisis/{item_id}')
+def get_analisis(item_id: str):
+    ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+    if '/' in item_id or '\\' in item_id or item_id.startswith('.'):
+        return {'ok': False, 'error': 'invalid id'}
+    p = (ANALYSIS_DIR / item_id).resolve()
+    if not str(p).startswith(str(ANALYSIS_DIR.resolve())) or not p.exists() or p.suffix.lower() != '.md':
+        return {'ok': False, 'error': 'not found'}
+    text = p.read_text(encoding='utf-8')
+    meta, body = _parse_analysis_frontmatter(text)
+    title = meta.get('title') or _fallback_title(body, p.name)
+    summary = meta.get('summary') or _fallback_summary(body)
+    tags = meta.get('tags') or ['analisis']
+    if '__' in p.name:
+        prefix = p.name.split('__', 1)[0].lower()
+        if prefix and prefix not in tags:
+            tags = [prefix] + tags
+    return {
+        'ok': True, 'id': p.name, 'file': p.name,
+        'title': title, 'summary': summary,
+        'tags': tags, 'date': meta.get('date'),
+        'markdown': body,
+    }
+
+
+@app.post('/api/sherlock/request')
+def create_sherlock_request(data: dict):
+    topic = (data.get('topic') or '').strip()
+    if not topic:
+        return {'ok': False, 'error': 'topic required'}
+    req_dir = ANALYSIS_DIR / 'requests'
+    req_dir.mkdir(parents=True, exist_ok=True)
+    date_str = datetime.utcnow().strftime('%Y-%m-%d')
+    existing = list(req_dir.glob(f'REQ__{date_str}_*.md'))
+    n = len(existing) + 1
+    safe_topic = ''.join(c if c.isalnum() or c in '-_ ' else '_' for c in topic)[:50].strip().replace(' ', '_').lower()
+    filename = f'REQ__{date_str}_{n:02d}_{safe_topic}.md'
+    filepath = req_dir / filename
+    content = f'''---
+title: "Petición: {topic}"
+summary: "Pendiente de procesar por Sherlock"
+tags: [request, sherlock]
+date: {date_str}
+---
+
+# 📬 Petición de Análisis — {topic}
+
+> Fecha: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+> Estado: Pendiente
+
+'''
+    filepath.write_text(content)
+    return {'ok': True, 'file': filename, 'path': str(filepath)}
 
 @app.get("/api/shadow/history")
 def shadow_history(limit: int = 100):
