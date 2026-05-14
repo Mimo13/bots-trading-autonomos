@@ -861,6 +861,31 @@ def list_sherlock_requests():
                           'date': meta.get('date', ''), 'file': p.name, 'body': ''})
     return {'items': items}
 
+
+@app.get('/api/xrp-swing/status')
+def xrp_swing_status():
+    state_file = ROOT / 'runtime' / 'xrp_swing' / 'state.json'
+    log_file = ROOT / 'runtime' / 'xrp_swing' / 'decisions.log'
+    state = {}
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text())
+        except Exception:
+            pass
+    decisions = []
+    if log_file.exists():
+        try:
+            lines = log_file.read_text().strip().split('\n')
+            for line in lines[-10:]:
+                try:
+                    decisions.append(json.loads(line.strip()))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    return {'ok': True, 'state': state, 'decisions': decisions}
+
+
 @app.get("/api/shadow/history")
 def shadow_history(limit: int = 100):
     """Historical shadow mode comparisons."""
