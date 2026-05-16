@@ -1,0 +1,179 @@
+{
+  "generated_at": "2026-05-12T12:10:44.275991Z",
+  "symbols": [
+    "SOLUSDT",
+    "XRPUSDT",
+    "BTCUSDT"
+  ],
+  "timeframe": "4h",
+  "heuristic": {
+    "regime": "sideways",
+    "confidence": 0.1505,
+    "reason": "heuristic_multi_symbol: most_conservative_is_sideways",
+    "symbols": [
+      {
+        "symbol": "SOLUSDT",
+        "regime": "sideways",
+        "confidence": 0.1574,
+        "reason": "no_clear_trend",
+        "metrics": {
+          "last": 93.38,
+          "trend50_pct": -0.07,
+          "vol_5m_pct": 0.099,
+          "drawdown_from_80bar_peak_pct": -0.586
+        }
+      },
+      {
+        "symbol": "XRPUSDT",
+        "regime": "sideways",
+        "confidence": 0.143,
+        "reason": "no_clear_trend",
+        "metrics": {
+          "last": 1.4203,
+          "trend50_pct": -0.044,
+          "vol_5m_pct": 0.06,
+          "drawdown_from_80bar_peak_pct": -0.497
+        }
+      },
+      {
+        "symbol": "BTCUSDT",
+        "regime": "sideways",
+        "confidence": 0.151,
+        "reason": "no_clear_trend",
+        "metrics": {
+          "last": 80406.01,
+          "trend50_pct": 0.118,
+          "vol_5m_pct": 0.039,
+          "drawdown_from_80bar_peak_pct": -0.032
+        }
+      }
+    ]
+  },
+  "hmm": {
+    "regime": "risk_off",
+    "confidence": 0.9172,
+    "reason": "hmm_multi_symbol: most_conservative_is_risk_off",
+    "symbols": [
+      {
+        "symbol": "SOLUSDT",
+        "timeframe": "4h",
+        "regime": "bull",
+        "confidence": 0.9886,
+        "hmm_states": 5,
+        "hmm_state": 0,
+        "reason": "positive_return_momentum vol=0.1523 cumret=0.0092",
+        "metrics": {
+          "data_source": "binance_remote_4h",
+          "bars_5m": 300,
+          "bars_resampled": 360,
+          "feature_rows": 340,
+          "last_close": 95.0,
+          "last_bar_at": "2026-05-12T12:00:00",
+          "volatility": 0.152339,
+          "cumulative_return": 0.009217,
+          "momentum": 0.009345,
+          "bic": -4505.623
+        },
+        "transition_probs": {
+          "state_0": 0.8648,
+          "state_1": 0.075,
+          "state_2": 0.0,
+          "state_3": 0.0,
+          "state_4": 0.0603
+        }
+      },
+      {
+        "symbol": "XRPUSDT",
+        "timeframe": "4h",
+        "regime": "risk_off",
+        "confidence": 0.9995,
+        "hmm_states": 5,
+        "hmm_state": 4,
+        "reason": "highest_vol_state vol=0.2063",
+        "metrics": {
+          "data_source": "binance_remote_4h",
+          "bars_5m": 300,
+          "bars_resampled": 360,
+          "feature_rows": 340,
+          "last_close": 1.4508,
+          "last_bar_at": "2026-05-12T12:00:00",
+          "volatility": 0.206269,
+          "cumulative_return": 0.021192,
+          "momentum": 0.021577,
+          "bic": -4829.224
+        },
+        "transition_probs": {
+          "state_0": 0.0001,
+          "state_1": 0.0,
+          "state_2": 0.0888,
+          "state_3": 0.0,
+          "state_4": 0.9111
+        }
+      },
+      {
+        "symbol": "BTCUSDT",
+        "timeframe": "4h",
+        "regime": "risk_off",
+        "confidence": 0.7634,
+        "hmm_states": 2,
+        "hmm_state": 1,
+        "reason": "extreme_vol_without_trend vol=0.1291",
+        "metrics": {
+          "data_source": "binance_remote_4h",
+          "bars_5m": 300,
+          "bars_resampled": 360,
+          "feature_rows": 340,
+          "last_close": 80829.71,
+          "last_bar_at": "2026-05-12T12:00:00",
+          "volatility": 0.129075,
+          "cumulative_return": 0.030149,
+          "momentum": 0.030728,
+          "bic": -4873.709
+        },
+        "transition_probs": {
+          "state_0": 0.0433,
+          "state_1": 0.9567
+        }
+      }
+    ]
+  },
+  "by_symbol": [
+    {
+      "symbol": "SOLUSDT",
+      "heuristic_regime": "sideways",
+      "heuristic_confidence": 0.1574,
+      "hmm_regime": "bull",
+      "hmm_confidence": 0.9886,
+      "agreement": false,
+      "heuristic_reason": "no_clear_trend",
+      "hmm_reason": "positive_return_momentum vol=0.1523 cumret=0.0092"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "heuristic_regime": "sideways",
+      "heuristic_confidence": 0.143,
+      "hmm_regime": "risk_off",
+      "hmm_confidence": 0.9995,
+      "agreement": false,
+      "heuristic_reason": "no_clear_trend",
+      "hmm_reason": "highest_vol_state vol=0.2063"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "heuristic_regime": "sideways",
+      "heuristic_confidence": 0.151,
+      "hmm_regime": "risk_off",
+      "hmm_confidence": 0.7634,
+      "agreement": false,
+      "heuristic_reason": "no_clear_trend",
+      "hmm_reason": "extreme_vol_without_trend vol=0.1291"
+    }
+  ],
+  "summary": {
+    "heuristic_regime": "sideways",
+    "hmm_regime": "risk_off",
+    "agreement_count": 0,
+    "total_symbols": 3,
+    "fully_aligned": false
+  }
+}

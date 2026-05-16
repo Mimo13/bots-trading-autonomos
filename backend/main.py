@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 import os, subprocess, csv, json, urllib.request, urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timezone
 from decimal import Decimal
 from pathlib import Path
 from fastapi import FastAPI
@@ -15,17 +15,23 @@ app=FastAPI(title='Bots Trading Dashboard')
 app.mount('/static', StaticFiles(directory=str(ROOT/'frontend')), name='static')
 
 BOT_META = {
-    'fabian': {'label': 'FabiánPullback', 'short': 'Fabián cTrader', 'order': 10, 'family': 'forex'},
-    'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', 'order': 20, 'family': 'crypto'},
-    'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
-    'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet', 'ai': True},
-    'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet', 'ai': True},
-    'tv_sol': {'label': 'TV Signal SOL', 'short': 'TV-SOL', 'order': 41, 'family': 'crypto'},
-    'mtfreg': {'label': 'MTF Regime Bot', 'short': 'MTFReg', 'order': 45, 'family': 'crypto'},
-    'boxbr': {'label': 'Box Breakout Bot', 'short': 'BoxBr', 'order': 46, 'family': 'crypto'},
-    'scalp': {'label': 'Scalping 5m Bot', 'short': 'Scalp5m', 'order': 47, 'family': 'crypto'},
-    'xrp_grid': {'label': 'XRP Grid Bot', 'short': 'XRPGrid', 'order': 48, 'family': 'crypto'},
-    'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'polymarket'},
+    'sol_pb': {'label': 'SolPullbackBot', 'short': 'SolPullback', 'order': 10, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    'fabian_spot_long': {'label': 'FabianSpotLong', 'short': 'FabianSpot', 'order': 25, 'family': 'crypto', 'compare': True, 'exchange': 'Binance (USDC)'},
+    'xrp_grid': {'label': 'XRP Grid Bot', 'short': 'XRPGrid', 'order': 48, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    'xrp_grid_testnet_100': {'label': 'XRP Testnet 100€', 'short': 'XGT100', 'order': 50, 'family': 'crypto', 'exchange': 'Binance Testnet (XRP/USDC)', 'hidden': True},
+    'xrp_grid_testnet_portfolio': {'label': 'XRP Testnet Binance', 'short': 'XGTBin', 'order': 51, 'family': 'crypto', 'exchange': 'Binance Testnet (XRP/USDC)', 'hidden': True},
+    'xrp_grid_testnet_hot_cold': {'label': 'XRP Testnet Binance+Cold', 'short': 'XGTCold', 'order': 52, 'family': 'crypto', 'exchange': 'Binance Testnet (XRP/USDC)', 'hidden': True},
+    'bnb_spot_long': {'label': 'BnbSpotLongBot', 'short': 'BnbSpot', 'order': 49, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    'bnb_grid': {'label': 'BNB Grid Bot', 'short': 'BNBGrid', 'order': 49.5, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    # ARCHIVADO 2026-05-13: PolyKronosPaper — 39% WR, -$53.44 PnL 7d, 10 pérdidas seguidas, sin edge en binary options
+    # ARCHIVO DEFINITIVO 2026-05-13: excluido de API, DB, collector y frontend
+    # ARCHIVADO 2026-05-14: SOL Portfolio Spot (pfolio) — RSI 5m sobre SOL, -$0.54 7d, 53% WR, edge negativo.
+    # ARCHIVADO 2026-05-11:
+    # 'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', ...} — shorts irrealistas; reemplazado por fabian_spot_long
+    # 'fabianpro': {'label': 'FabianPro', ...} — shorts + rendimiento mediocre (+$16 en 42 trades)
+    # 'mtfreg': {'label': 'MTF Regime Bot', ...} — plano (+$0.21), 5 trades, shorts
+    # 'boxbr': {'label': 'Box Breakout Bot', ...} — plano (+$0.07), 5 trades, shorts
+    # 'scalp': {'label': 'Scalping 5m Bot', ...} — plano (+$0.03), 6 trades, shorts
 }
 
 def _meta(bot: str):
@@ -166,11 +172,8 @@ def latency():
     now=datetime.now(timezone.utc).timestamp()
     items=[]
     for name,paths,limit in _latency_checks():
-        p=None
-        for cand in paths:
-            if cand.exists():
-                p=cand
-                break
+        existing=[cand for cand in paths if cand.exists()]
+        p=max(existing, key=lambda x: x.stat().st_mtime) if existing else None
         if p is None:
             items.append({'name':name,'age_s':None,'limit_s':limit,'severity':'critical'})
             continue
@@ -203,26 +206,7 @@ def alerts():
 def _collect_reason_rows(bot:str, days:int=1):
     rows=[]
     cutoff=datetime.now(timezone.utc).timestamp() - max(1,days)*86400
-    if bot=='poly':
-        runs=sorted((ROOT/'runtime/polymarket/runs').glob('*/decisions_log.csv'))[-90:]
-        for f in runs:
-            with f.open() as h:
-                for row in csv.DictReader(h):
-                    ts=row.get('timestamp_utc','')
-                    try:
-                        dt=datetime.fromisoformat(ts.replace('Z','+00:00'))
-                    except Exception:
-                        continue
-                    if dt.timestamp()>=cutoff:
-                        rows.append((dt,row.get('reason_code','UNKNOWN')))
-    else:
-        ops=ROOT/'runtime/ops/ctrader_operations.csv'
-        if ops.exists():
-            with ops.open() as h:
-                for row in csv.DictReader(h):
-                    rc=row.get('reason_code') or row.get('operation') or 'UNKNOWN'
-                    dt=datetime.now(timezone.utc)
-                    rows.append((dt,rc))
+    # poly ARCHIVADO 2026-05-13 — no reasons collection needed
     return rows
 
 @app.get('/api/reasons/{bot}')
@@ -241,6 +225,39 @@ def reasons_hourly(bot:str, days:int=1):
         hourly[(key, rc)] += 1
     items=[{'hour':h,'reason_code':rc,'count':n} for (h,rc),n in sorted(hourly.items(), key=lambda x:(x[0][0],-x[1]))]
     return {'bot':bot,'days':days,'items':items}
+
+def _orchestrator_state():
+    p = ROOT / 'runtime/orchestrator/state.json'
+    if not p.exists():
+        return {'enabled': False, 'note': 'state not generated yet', 'bots': []}
+    try:
+        return json.loads(p.read_text())
+    except Exception as e:
+        return {'enabled': False, 'error': str(e), 'bots': []}
+
+@app.get('/api/orchestrator/status')
+def orchestrator_status():
+    return _orchestrator_state()
+
+@app.get('/api/orchestrator/decisions')
+def orchestrator_decisions(limit:int=40):
+    p = ROOT / 'runtime/orchestrator/decisions.jsonl'
+    if not p.exists():
+        return {'items': []}
+    lines = p.read_text().splitlines()[-max(1,min(limit,200)):]
+    items=[]
+    for line in reversed(lines):
+        try:
+            items.append(json.loads(line))
+        except Exception:
+            pass
+    return {'items': items}
+
+@app.post('/api/orchestrator/run')
+def orchestrator_run():
+    py=str(ROOT/'.venv/bin/python')
+    cp=subprocess.run([py, str(ROOT/'scripts/bot_orchestrator.py')], capture_output=True, text=True)
+    return {'ok':cp.returncode==0,'stdout':cp.stdout[-2000:], 'stderr':cp.stderr[-1200:], 'state': _orchestrator_state()}
 
 @app.get('/api/strategy/recommendations')
 def strategy_recommendations():
@@ -295,7 +312,7 @@ def weekly_compare():
              coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
-        and bot_name <> 'poly'
+        and bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp','pfolio')
       group by bot_name
     ''')
 
@@ -303,45 +320,66 @@ def weekly_compare():
     for r in rows:
         agg[r[0]]={'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])}
 
-    # Include all bots from BOT_META except poly, and those in bot_status
-    bots_rows=q("select bot_name from bot_status where bot_name <> 'poly' order by bot_name")
+    # Include all bots from BOT_META, excluding archived ones
+    bots_rows=q("select bot_name from bot_status where bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp','pfolio') order by bot_name")
     bot_names=[r[0] for r in bots_rows]
     for b in BOT_META.keys():
-        if b != 'poly' and b not in bot_names:
+        if b not in bot_names:
             bot_names.append(b)
 
     items=[]
     for b in bot_names:
         m=_meta(b)
+        if m.get('hidden'):
+            continue
         a=agg.get(b, {'pnl_week':0,'trades':0,'win_rate':0})
         items.append({'bot_name':b, 'label':m['label'], 'short':m['short'], 'pnl_week':a['pnl_week'],'trades':a['trades'],'win_rate':a['win_rate']})
 
     items.sort(key=lambda x: (x.get('order', _meta(x['bot_name']).get('order',999))))
     return {'items':items}
 
+
+@app.get('/api/weekly-compare-candidates')
+def weekly_compare_candidates():
+    candidate_bots = ['bnb_spot_long', 'fabian_spot_long']
+    rows=q('''
+      select bot_name,
+             coalesce(sum(pnl_usd),0) as pnl_week,
+             count(*) filter (where result in ('WIN','LOSS')) as trades,
+             coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
+      from trades
+      where ts >= now() - interval '7 day'
+        and bot_name = any(%s)
+      group by bot_name
+    ''',[candidate_bots])
+    agg={r[0]:{'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])} for r in rows}
+    items=[]
+    for b in candidate_bots:
+        m=_meta(b)
+        a=agg.get(b, {'pnl_week':0,'trades':0,'win_rate':0})
+        items.append({'bot_name':b, 'label':m['label'], 'short':m['short'], **a})
+    return {'items':items}
+
 def _run_pfolio(cfg_path: str = ''):
     """Run portfolio bot with enriched CSV, output to portfolio_ timestamp dir."""
-    poly_input = ROOT / 'runtime/polymarket/polymarket_input_enriched.csv'
-    if not poly_input.exists():
-        poly_input = ROOT / 'runtime/polymarket/polymarket_base_input.csv'
-    if not poly_input.exists():
-        return
-    run_id = datetime.now(timezone.utc).strftime('portfolio_%Y%m%dT%H%M%SZ')
-    out_dir = ROOT / 'runtime/polymarket/runs' / run_id
-    cfg = ROOT / 'polymarket_portfolio_config.json'
-    cmd = [str(ROOT / '.venv/bin/python'), str(ROOT / 'polymarket_portfolio_bot.py'),
-           '--input', str(poly_input), '--config', str(cfg), '--output-dir', str(out_dir)]
-    subprocess.Popen(cmd, cwd=ROOT)
+    # poly ARCHIVADO 2026-05-13 — polymarket input no longer used
+    # polymarket_portfolio_bot.py is also effectively archived (no live data pipeline)
+    pass
 
 
 @app.post('/api/bots/{bot}/start')
 def start(bot:str):
-    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','pfolio':'pfolio','tv_sol':'tv_sol'}.get(bot)
-    if bot=='fabian':
-        subprocess.run(['open','-ga','/Applications/cTrader.app'])
-        subprocess.Popen([str(ROOT/'run_bridge_cycle.sh')], cwd=ROOT)
+    # poly removed from db_name — ARCHIVADO 2026-05-13
+    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabian_spot_long':'fabian_spot_long','fabianpro':'fabianpro','tv_sol':'tv_sol'}.get(bot)
+    # pfolio archivado — ver polymarket_portfolio_bot.py
+    if bot=='sol_pb':
+        # SolPullbackBot: arranca con datos de Binance
+        subprocess.Popen([str(ROOT/'.venv/bin/python'), str(ROOT/'sol_pullback_bot.py'),
+                         '--output-dir', str(ROOT/'runtime/polymarket/runs/sol_pb_'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))],
+                         cwd=ROOT)
+    # pfolio archivado
     elif bot=='pfolio':
-        _run_pfolio()
+        pass  # _run_pfolio() — archivado 2026-05-10
     # Mark as running in DB immediately
     if db_name:
         try:
@@ -358,12 +396,13 @@ def start(bot:str):
 
 @app.post('/api/bots/{bot}/stop')
 def stop(bot:str):
-    if bot=='fabian':
-        subprocess.run(['pkill','-f','cTrader'])
+    if bot=='sol_pb':
+        subprocess.run(['pkill','-f','sol_pullback_bot'])
+    # pfolio archivado
     elif bot=='pfolio':
-        subprocess.run(['pkill','-f','polymarket_portfolio_bot'])
-    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro',
-               'poly':'poly','pfolio':'pfolio','tv_sol':'tv_sol',
+        pass
+    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabian_spot_long':'fabian_spot_long','fabianpro':'fabianpro',
+               'poly':'poly','tv_sol':'tv_sol',
                'fabian_live_pullback':'fabian_live_pullback','fabian_live_pro':'fabian_live_pro','tv_sol':'tv_sol'}.get(bot)
     if db_name:
         try:
@@ -377,10 +416,12 @@ def stop(bot:str):
 @app.get('/api/bots')
 def bots_list():
     """List all registered bots dynamically."""
-    rows = q("select bot_name, is_running, mode from bot_status where bot_name <> 'poly' order by bot_name")
+    rows = q("select bot_name, is_running, mode from bot_status where bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp','pfolio') order by bot_name")
     bots=[]
     for r in rows:
         m=_meta(r[0])
+        if m.get('hidden'):
+            continue
         bots.append({'name': r[0], 'is_running': r[1], 'mode': r[2], **m})
     bots.sort(key=lambda x:(x.get('order',999), x['name']))
     return {'bots': bots}
@@ -425,22 +466,24 @@ def binance_personal_portfolio():
             if qty<=0:
                 continue
             usd_value=None
+            price=None
             quote_asset = asset[2:] if asset.startswith('LD') and len(asset) > 2 else asset
             if quote_asset == 'USDT':
                 usd_value=qty
+                price=1.0
                 change_24h=0.0
             else:
                 try:
                     t=client.get_ticker(f"{quote_asset}USDT")
-                    last_price=float(t.get('lastPrice') or 0)
-                    usd_value=qty*last_price
+                    price=float(t.get('lastPrice') or 0)
+                    usd_value=qty*price
                     change_24h=float(t.get('priceChangePercent') or 0)
                 except Exception:
                     usd_value=None
                     change_24h=None
             if usd_value is not None:
                 total += usd_value
-            items.append({'asset':asset,'free':free,'locked':locked,'qty':qty,'usd_value':usd_value,'change_24h':change_24h})
+            items.append({'asset':asset,'free':free,'locked':locked,'qty':qty,'price':price,'usd_value':usd_value,'change_24h':change_24h})
 
         items.sort(key=lambda x: (x.get('usd_value') is None, -(x.get('usd_value') or 0)))
         return {'ok':True,'total_usd':total,'items':items,'updated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}
@@ -504,3 +547,418 @@ def personal_portfolio_save(data: dict):
 @app.get('/api/health')
 def health():
     return {'ok':True}
+
+# ──────────────────────────────────────────────
+# CoinEx portfolio endpoint
+# ──────────────────────────────────────────────
+@app.get("/api/coinex/portfolio")
+def coinex_portfolio():
+    try:
+        access_id = os.getenv("COINEX_ACCESS_ID", "")
+        secret_key = os.getenv("COINEX_SECRET_KEY", "")
+        if not access_id or not secret_key:
+            return {"ok": False, "error": "COINEX_ACCESS_ID or COINEX_SECRET_KEY not set", "items": [], "total_usd": 0}
+        from coinex_client import coinex_balance_usd
+        return coinex_balance_usd(access_id, secret_key)
+    except Exception as e:
+        return {"ok": False, "error": str(e), "items": [], "total_usd": 0}
+
+
+# ──────────────────────────────────────────────
+# Portfolio Mirror — snapshot + rebalance system
+# ──────────────────────────────────────────────
+PORTFOLIO_SNAPSHOT = ROOT / 'runtime/portfolio/snapshot.json'
+PORTFOLIO_RUNS = ROOT / 'runtime/portfolio/runs'
+
+@app.get('/api/portfolio-mirror/status')
+def portfolio_mirror_status():
+    """Estado actual del Portfolio Mirror Bot."""
+    # Leer snapshot
+    snapshot = {'total_usd': 0, 'assets': [], 'captured_at': None}
+    if PORTFOLIO_SNAPSHOT.exists():
+        try:
+            snapshot = json.loads(PORTFOLIO_SNAPSHOT.read_text())
+        except Exception:
+            pass
+    # Leer último run
+    latest_run = None
+    latest_mtime = 0
+    if PORTFOLIO_RUNS.exists():
+        for entry in sorted(PORTFOLIO_RUNS.iterdir()):
+            if entry.name.startswith('portfolio_mirror_'):
+                s = entry / 'summary.json'
+                if s.exists() and s.stat().st_mtime > latest_mtime:
+                    latest_run = entry
+                    latest_mtime = s.stat().st_mtime
+    summary = None
+    if latest_run:
+        try:
+            summary = json.loads((latest_run / 'summary.json').read_text())
+        except Exception:
+            pass
+    # Performance desde BD
+    perf = _perf_summary('portfolio_mirror')
+    # Target allocation por régimen
+    from scripts.bot_orchestrator import detect_regime, merge_regimes
+    try:
+        regs = [detect_regime(s) for s in ['SOLUSDT','XRPUSDT','BNBUSDC']]
+        current_regime = merge_regimes(regs).get('regime', 'sideways')
+    except Exception:
+        current_regime = 'sideways'
+    targets = {'sideways': {'XRP':35,'PEPE':10,'USDC':30,'SOL':15,'HBAR':10},
+               'bull': {'XRP':40,'PEPE':15,'USDC':15,'SOL':20,'HBAR':10},
+               'bear': {'XRP':20,'PEPE':5,'USDC':55,'SOL':10,'HBAR':10}}
+    active_target = targets.get(current_regime, targets['sideways'])
+    return {'ok': True,
+            'snapshot': snapshot,
+            'current_regime': current_regime,
+            'targets': targets,
+            'active_target': active_target,
+            'latest_summary': summary,
+            'performance': perf}
+
+@app.get('/api/portfolio-mirror/history')
+def portfolio_mirror_history(limit: int = 30):
+    """Histórico de runs del Portfolio Mirror Bot."""
+    items = []
+    if PORTFOLIO_RUNS.exists():
+        for entry in sorted(PORTFOLIO_RUNS.iterdir(), reverse=True):
+            if entry.name.startswith('portfolio_mirror_'):
+                s = entry / 'summary.json'
+                if s.exists():
+                    try:
+                        items.append(json.loads(s.read_text()))
+                    except Exception:
+                        pass
+                if len(items) >= limit:
+                    break
+    return {'ok': True, 'items': items}
+
+PORTFOLIO_DECISIONS = ROOT / 'runtime/portfolio/decisions.jsonl'
+
+@app.get('/api/portfolio-mirror/decisions')
+def portfolio_mirror_decisions(limit: int = 50):
+    """Decisiones del Portfolio Mirror Bot (qué investigó, por qué tradeó o no)."""
+    if not PORTFOLIO_DECISIONS.exists():
+        return {'ok': True, 'items': []}
+    lines = PORTFOLIO_DECISIONS.read_text().strip().split('\n')
+    items = []
+    for line in lines[-max(1, min(limit, 200)):]:
+        try:
+            items.append(json.loads(line))
+        except Exception:
+            pass
+    return {'ok': True, 'items': items}
+
+# ──────────────────────────────────────────────
+# Shadow Mode — HMM vs Heuristic comparison
+# ──────────────────────────────────────────────
+@app.get("/api/shadow/status")
+def shadow_status():
+    """Current regime: orchestrator heuristic vs HMM snapshot."""
+    import json as _j
+    from pathlib import Path
+    from scripts.bot_orchestrator import detect_regime, merge_regimes, load_json, utc_now
+    CONFIG = ROOT / "orchestrator_config.json"
+    cfg = load_json(CONFIG, {})
+    # Heuristic result
+    symbols = cfg.get("symbols", ["SOLUSDT"])
+    heur_regimes = [detect_regime(s) for s in symbols]
+    heur_merged = merge_regimes(heur_regimes)
+    # HMM snapshot
+    snapshot_path = ROOT / "hmm" / "output" / "hmm_regime_snapshot.json"
+    hmm_data = {"regime": "unknown", "confidence": 0.0, "reason": "", "symbols": [], "source": "none"}
+    if snapshot_path.exists():
+        try:
+            hmm_data = _j.loads(snapshot_path.read_text())
+        except Exception:
+            pass
+    heuristic_regime = heur_merged.get("regime", "unknown")
+    hmm_regime = hmm_data.get("regime", "unknown")
+    agree = heuristic_regime == hmm_regime
+    return {
+        "ok": True,
+        "timestamp": utc_now(),
+        "shadow_enabled": bool(cfg.get("hmm_regime", {}).get("enabled")),
+        "heuristic": {
+            "regime": heuristic_regime,
+            "confidence": heur_merged.get("confidence", 0),
+            "reason": heur_merged.get("reason", ""),
+            "source": "orchestrator_heuristic",
+        },
+        "hmm": {
+            "regime": hmm_regime,
+            "confidence": hmm_data.get("confidence", 0),
+            "reason": hmm_data.get("reason", ""),
+            "symbols": hmm_data.get("symbols", []),
+            "source": hmm_data.get("source", "unknown"),
+            "generated_at": hmm_data.get("generated_at", ""),
+        },
+        "comparison": {
+            "agree": agree,
+            "heuristic_regime": heuristic_regime,
+            "hmm_regime": hmm_regime,
+            "disagreement_severity": "high" if (heuristic_regime in ("bull", "sideways") and hmm_regime in ("bear", "risk_off")) or (heuristic_regime == "risk_off" and hmm_regime in ("bull", "sideways")) else "medium" if heuristic_regime != hmm_regime else "none",
+        },
+    }
+
+
+SHADOW_LOG = ROOT / "runtime" / "orchestrator" / "shadow_log.jsonl"
+
+
+
+ANALYSIS_DIR = ROOT / "analisis"
+
+
+def _parse_analysis_frontmatter(text: str):
+    meta = {}
+    body = text
+    if text.startswith('---\n'):
+        end = text.find('\n---\n', 4)
+        if end != -1:
+            fm = text[4:end]
+            body = text[end + 5:]
+            for line in fm.splitlines():
+                if ':' not in line:
+                    continue
+                k, v = line.split(':', 1)
+                k = k.strip().lower()
+                v = v.strip()
+                if k == 'tags':
+                    if v.startswith('[') and v.endswith(']'):
+                        vals = [x.strip().strip('"\'') for x in v[1:-1].split(',') if x.strip()]
+                        meta[k] = vals
+                    else:
+                        meta[k] = [x.strip() for x in v.split(',') if x.strip()]
+                else:
+                    meta[k] = v.strip('"\'')
+    return meta, body
+
+
+def _fallback_title(body: str, file_name: str) -> str:
+    for ln in body.splitlines():
+        ln = ln.strip()
+        if ln.startswith('#'):
+            return ln.lstrip('#').strip()
+    return file_name.rsplit('.',1)[0].replace('_', ' ').replace('-', ' ').strip()
+
+
+def _fallback_summary(body: str, max_len: int = 180) -> str:
+    for ln in body.splitlines():
+        t = ln.strip()
+        if not t or t.startswith('#'):
+            continue
+        if len(t) > max_len:
+            return t[:max_len-1].rstrip() + '\u2026'
+        return t
+    return 'Sin resumen todav\u00eda.'
+
+
+@app.get('/api/analisis')
+def list_analisis():
+    ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+    items = []
+    for p in sorted(ANALYSIS_DIR.glob('*.md'), key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            text = p.read_text(encoding='utf-8')
+        except Exception:
+            continue
+        meta, body = _parse_analysis_frontmatter(text)
+        st = p.stat()
+        title = meta.get('title') or _fallback_title(body, p.name)
+        summary = meta.get('summary') or _fallback_summary(body)
+        tags = meta.get('tags') or ['analisis']
+        if '__' in p.name:
+            prefix = p.name.split('__', 1)[0].lower()
+            if prefix and prefix not in tags:
+                tags = [prefix] + tags
+        date = meta.get('date') or datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat()
+        items.append({
+            'id': p.name, 'file': p.name, 'title': title,
+            'summary': summary, 'tags': tags,
+            'date': date,
+            'updated_at': datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(),
+        })
+    return {'items': items}
+
+
+@app.get('/api/analisis/read-status')
+def analisis_read_status():
+    return {"read_ids": []}
+
+
+@app.get('/api/analisis/{item_id}')
+def get_analisis(item_id: str):
+    ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+    if '/' in item_id or '\\' in item_id or item_id.startswith('.'):
+        return {'ok': False, 'error': 'invalid id'}
+    p = (ANALYSIS_DIR / item_id).resolve()
+    if not str(p).startswith(str(ANALYSIS_DIR.resolve())) or not p.exists() or p.suffix.lower() != '.md':
+        return {'ok': False, 'error': 'not found'}
+    text = p.read_text(encoding='utf-8')
+    meta, body = _parse_analysis_frontmatter(text)
+    title = meta.get('title') or _fallback_title(body, p.name)
+    summary = meta.get('summary') or _fallback_summary(body)
+    tags = meta.get('tags') or ['analisis']
+    if '__' in p.name:
+        prefix = p.name.split('__', 1)[0].lower()
+        if prefix and prefix not in tags:
+            tags = [prefix] + tags
+    return {
+        'ok': True, 'id': p.name, 'file': p.name,
+        'title': title, 'summary': summary,
+        'tags': tags, 'date': meta.get('date'),
+        'markdown': body,
+    }
+
+
+@app.post('/api/sherlock/request')
+def create_sherlock_request(data: dict):
+    topic = (data.get('topic') or '').strip()
+    if not topic:
+        return {'ok': False, 'error': 'topic required'}
+    req_dir = ANALYSIS_DIR / 'requests'
+    req_dir.mkdir(parents=True, exist_ok=True)
+    date_str = datetime.utcnow().strftime('%Y-%m-%d')
+    existing = list(req_dir.glob(f'REQ__{date_str}_*.md'))
+    n = len(existing) + 1
+    safe_topic = ''.join(c if c.isalnum() or c in '-_ ' else '_' for c in topic)[:50].strip().replace(' ', '_').lower()
+    filename = f'REQ__{date_str}_{n:02d}_{safe_topic}.md'
+    filepath = req_dir / filename
+    content = f'''---
+title: "Petición: {topic}"
+summary: "Pendiente de procesar por Sherlock"
+tags: [request, sherlock]
+date: {date_str}
+---
+
+# 📬 Petición de Análisis — {topic}
+
+> Fecha: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+> Estado: Pendiente
+
+'''
+    filepath.write_text(content)
+    return {'ok': True, 'file': filename, 'path': str(filepath)}
+
+
+@app.get('/api/sherlock/requests')
+def list_sherlock_requests():
+    req_dir = ANALYSIS_DIR / 'requests'
+    req_dir.mkdir(parents=True, exist_ok=True)
+    done_dir = req_dir / 'done'
+    items = []
+    for p in sorted(req_dir.glob('REQ__*.md'), key=lambda x: x.stat().st_mtime, reverse=True):
+        if p.parent.name == 'done':
+            continue
+        text = p.read_text(encoding='utf-8')
+        meta, body = _parse_analysis_frontmatter(text)
+        title = meta.get('title') or p.name
+        # Check if body has more than just the template (has content added by Sherlock)
+        has_content = len(body.strip()) > 250
+        items.append({'id': p.name, 'title': title, 'status': 'hecho' if has_content else 'pendiente',
+                      'date': meta.get('date', ''), 'file': p.name, 'body': body.strip() if has_content else ''})
+    if done_dir.exists():
+        for p in sorted(done_dir.glob('REQ__*.md'), key=lambda x: x.stat().st_mtime, reverse=True):
+            text = p.read_text(encoding='utf-8')
+            meta, body = _parse_analysis_frontmatter(text)
+            title = meta.get('title') or p.name
+            items.append({'id': p.name, 'title': title, 'status': 'hecho',
+                          'date': meta.get('date', ''), 'file': p.name, 'body': ''})
+    return {'items': items}
+
+
+@app.get('/api/xrp-grid-testnet/status')
+def xrp_grid_testnet_status():
+    base = ROOT / 'runtime' / 'xrp_grid_testnet'
+    items = []
+    for bot in ['xrp_grid_testnet_100', 'xrp_grid_testnet_portfolio', 'xrp_grid_testnet_hot_cold']:
+        p = base / f'state_{bot}.json'
+        state = {}
+        if p.exists():
+            try:
+                state = json.loads(p.read_text())
+            except Exception as e:
+                state = {'bot_name': bot, 'error': str(e)}
+        else:
+            state = {'bot_name': bot, 'status': 'not_initialized'}
+        events = []
+        ev = base / f'events_{bot}.jsonl'
+        if ev.exists():
+            try:
+                for line in ev.read_text().splitlines()[-30:]:
+                    try:
+                        events.append(json.loads(line))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        state['recent_events'] = list(reversed(events))
+        items.append(state)
+    return {'ok': True, 'items': items, 'updated_at': datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}
+
+@app.post('/api/xrp-grid-testnet/run')
+def xrp_grid_testnet_run():
+    py = str(ROOT / '.venv/bin/python')
+    script = ROOT / 'scripts' / 'xrp_grid_testnet_runner.py'
+    cp = subprocess.run([py, str(script), '--bot', 'all', '--no-init'], cwd=ROOT, capture_output=True, text=True, timeout=90)
+    return {'ok': cp.returncode == 0, 'stdout': cp.stdout[-4000:], 'stderr': cp.stderr[-2000:], 'status': xrp_grid_testnet_status()}
+
+@app.get('/api/xrp-swing/status')
+def xrp_swing_status():
+    state_file = ROOT / 'runtime' / 'xrp_swing' / 'state.json'
+    log_file = ROOT / 'runtime' / 'xrp_swing' / 'decisions.log'
+    state = {}
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text())
+        except Exception:
+            pass
+    decisions = []
+    if log_file.exists():
+        try:
+            lines = log_file.read_text().strip().split('\n')
+            for line in lines[-10:]:
+                try:
+                    decisions.append(json.loads(line.strip()))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    return {'ok': True, 'state': state, 'decisions': decisions}
+
+
+@app.get("/api/shadow/history")
+def shadow_history(limit: int = 100):
+    """Historical shadow mode comparisons."""
+    if not SHADOW_LOG.exists():
+        return {"ok": True, "items": []}
+    lines = SHADOW_LOG.read_text().strip().split("\n")
+    items = []
+    for line in lines[-limit:]:
+        try:
+            items.append(json.loads(line))
+        except Exception:
+            continue
+    items.reverse()
+    return {"ok": True, "items": items}
+
+
+@app.post("/api/shadow/log")
+def shadow_log():
+    """Write current shadow comparison to history log."""
+    status = shadow_status()
+    from scripts.bot_orchestrator import utc_now
+    SHADOW_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with SHADOW_LOG.open("a", encoding="utf-8") as f:
+        entry = {
+            "ts": status.get("timestamp", utc_now()),
+            "heuristic_regime": status.get("heuristic", {}).get("regime"),
+            "hmm_regime": status.get("hmm", {}).get("regime"),
+            "agree": status.get("comparison", {}).get("agree"),
+            "heuristic_confidence": status.get("heuristic", {}).get("confidence"),
+            "hmm_confidence": status.get("hmm", {}).get("confidence"),
+            "disagreement_severity": status.get("comparison", {}).get("disagreement_severity"),
+        }
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return {"ok": True}

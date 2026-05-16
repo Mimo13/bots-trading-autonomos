@@ -31,9 +31,9 @@ create table if not exists positions_open (
   entry_price numeric,
   mark_price numeric,
   unrealized_pnl_usd numeric default 0,
-  updated_at timestamptz not null default now(),
-  unique (bot_name, symbol, side)
+  updated_at timestamptz not null default now()
 );
+create unique index if not exists positions_open_bot_symbol_side_uidx on positions_open(bot_name, symbol, side);
 
 create table if not exists wallet_tokens (
   id bigserial primary key,
@@ -41,9 +41,9 @@ create table if not exists wallet_tokens (
   token text not null,
   amount numeric not null default 0,
   usd_value numeric not null default 0,
-  updated_at timestamptz not null default now(),
-  unique (bot_name, token)
+  updated_at timestamptz not null default now()
 );
+create unique index if not exists wallet_tokens_bot_token_uidx on wallet_tokens(bot_name, token);
 
 create table if not exists strategy_recommendations (
   id bigserial primary key,

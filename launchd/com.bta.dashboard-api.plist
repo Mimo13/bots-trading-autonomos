@@ -2,8 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>com.bta.dashboard-api</string>
-<key>ProgramArguments</key><array><string>/bin/zsh</string><string>-lc</string><string>cd /Volumes/Almacen/Desarrollo/bots-trading-autonomos; DATABASE_URL=postgresql://cryptoai:cryptoai_local_password@localhost:5432/cryptoai ./.venv/bin/python -m uvicorn backend.main:app --host 0.0.0.0 --port 8787</string></array>
+<key>ProgramArguments</key><array><string>/bin/zsh</string><string>-lc</string><string>cd /Users/mimo13/bots-trading-autonomos-runtime; DATABASE_URL=postgresql:///bots_dashboard /Users/mimo13/bots-trading-autonomos-runtime/.venv/bin/python -m uvicorn backend.main:app --host 0.0.0.0 --port 8787</string></array>
 <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
-<key>StandardOutPath</key><string>/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/logs/launchd_api.out.log</string>
-<key>StandardErrorPath</key><string>/Volumes/Almacen/Desarrollo/bots-trading-autonomos/runtime/logs/launchd_api.err.log</string>
+<key>StandardOutPath</key><string>/Users/mimo13/bots-trading-autonomos-runtime/runtime/logs/launchd_api.out.log</string>
+<key>StandardErrorPath</key><string>/Users/mimo13/bots-trading-autonomos-runtime/runtime/logs/launchd_api.err.log</string>
 </dict></plist>

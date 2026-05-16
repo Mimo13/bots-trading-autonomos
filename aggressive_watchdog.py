@@ -7,9 +7,7 @@ from urllib.request import urlopen
 
 ROOT=Path('/Users/mimo13/bots-trading-autonomos-runtime')
 LOG=ROOT/'runtime/logs/watchdog.log'
-CTRADER_SIGNAL=ROOT/'runtime/tradingview/ctrader_signal.csv'
 LAST_STATUS=ROOT/'runtime/polymarket/last_runner_status.json'
-MAX_SIGNAL_AGE_S=360
 MAX_STATUS_AGE_S=7800
 
 def now(): return datetime.now(timezone.utc)
@@ -40,15 +38,16 @@ def cdp_ok():
         w(f"tradingview_cdp: DOWN ({e})"); return False
 
 def main():
-    cdp=cdp_ok(); sa=age(CTRADER_SIGNAL); ta=age(LAST_STATUS)
-    w(f"ages: ctrader_signal={sa}s last_runner_status={ta}s")
-    if sa>MAX_SIGNAL_AGE_S or not cdp:
-        run([str(ROOT/'run_bridge_cycle.sh')],3,15,'bridge_cycle')
+    cdp=cdp_ok(); ta=age(LAST_STATUS)
+    # DB health check — restart Postgres if needed
+    dh=subprocess.run([str(ROOT/'scripts/db_health.py')],capture_output=True,text=True,timeout=90)
+    w(f"db_health: {'OK' if dh.returncode==0 else f'FAIL rc={dh.returncode}'}")
+    w(f"ages: cdp={'ok' if cdp else 'down'} last_runner_status={ta}s")
     if ta>MAX_STATUS_AGE_S:
         run([str(ROOT/'run_supervisor_cycle.sh')],2,30,'supervisor_cycle')
-    sa2=age(CTRADER_SIGNAL); ta2=age(LAST_STATUS)
-    healthy=sa2<=MAX_SIGNAL_AGE_S and ta2<=MAX_STATUS_AGE_S
-    w(f"health: {'OK' if healthy else 'DEGRADED'} signal_age={sa2}s status_age={ta2}s")
+    ta2=age(LAST_STATUS)
+    healthy=ta2<=MAX_STATUS_AGE_S
+    w(f"health: {'OK' if healthy else 'DEGRADED'} status_age={ta2}s cdp={'ok' if cdp else 'down'}")
     return 0 if healthy else 1
 
 if __name__=='__main__': raise SystemExit(main())

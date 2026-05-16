@@ -1,0 +1,64 @@
+{
+  "rebalance_threshold_pct": 15.0,
+  "min_rebalance_usd": 3.0,
+  "max_trades_per_cycle": 8,
+  "targets_sideways": {
+    "XRP": 35.0,
+    "PEPE": 10.0,
+    "USDC": 30.0,
+    "SOL": 15.0,
+    "HBAR": 10.0
+  },
+  "targets_bull": {
+    "XRP": 40.0,
+    "PEPE": 15.0,
+    "USDC": 15.0,
+    "SOL": 20.0,
+    "HBAR": 10.0
+  },
+  "targets_bear": {
+    "XRP": 20.0,
+    "PEPE": 5.0,
+    "USDC": 55.0,
+    "SOL": 10.0,
+    "HBAR": 10.0
+  },
+  "initial_balance": 206.82,
+  "grid_enabled": true,
+  "grid_config": {
+    "XRP": {
+      "spacing_pct": 1.5,
+      "levels": 4,
+      "order_usd": 5.0,
+      "min_position_pct": 20.0,
+      "max_position_pct": 50.0,
+      "auto_recenter": true
+    },
+    "PEPE": {
+      "spacing_pct": 4.0,
+      "levels": 3,
+      "order_usd": 4.0,
+      "min_position_pct": 3.0,
+      "max_position_pct": 22.0,
+      "auto_recenter": true
+    },
+    "SOL": {
+      "spacing_pct": 1.5,
+      "levels": 4,
+      "order_usd": 5.0,
+      "min_position_pct": 7.0,
+      "max_position_pct": 28.0,
+      "auto_recenter": true
+    },
+    "HBAR": {
+      "spacing_pct": 2.0,
+      "levels": 3,
+      "order_usd": 4.0,
+      "min_position_pct": 4.0,
+      "max_position_pct": 22.0,
+      "auto_recenter": true
+    }
+  },
+  "regime_confirm_cycles": 2,
+  "regime_confidence_threshold": 0.35
+}

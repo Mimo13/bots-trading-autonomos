@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import os, subprocess, csv
+import os, subprocess, csv, json, urllib.request, urllib.error
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -9,24 +9,29 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import psycopg
 
-ROOT=Path('/Volumes/Almacen/Desarrollo/bots-trading-autonomos')
+ROOT=Path('/Users/mimo13/bots-trading-autonomos-runtime')
 DB_URL=os.getenv('DATABASE_URL','postgresql:///bots_dashboard')
 app=FastAPI(title='Bots Trading Dashboard')
 app.mount('/static', StaticFiles(directory=str(ROOT/'frontend')), name='static')
 
 BOT_META = {
-    'fabian': {'label': 'FabiánPullback', 'short': 'Fabián cTrader', 'order': 10, 'family': 'forex'},
-    'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', 'order': 20, 'family': 'crypto'},
-    'fabianpro': {'label': 'FabianPro', 'short': 'FabianPro', 'order': 30, 'family': 'crypto'},
-    'fabian_live_pullback': {'label': 'Fabian Live (testnet)', 'short': 'FabianLive', 'order': 35, 'family': 'testnet'},
-    'fabian_live_pro': {'label': 'Fabian Live Pro (testnet)', 'short': 'FabianLivePro', 'order': 36, 'family': 'testnet'},
-    'turtle': {'label': 'TurtleBot', 'short': 'Turtle', 'order': 40, 'family': 'crypto'},
-    'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket'},
-    'pfolio': {'label': 'PolyPortfolioPaper', 'short': 'PolyPortfolio', 'order': 60, 'family': 'polymarket'},
+    'sol_pb': {'label': 'SolPullbackBot', 'short': 'SolPullback', 'order': 10, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    'fabian_spot_long': {'label': 'FabianSpotLong', 'short': 'FabianSpot', 'order': 25, 'family': 'crypto', 'compare': True, 'exchange': 'Binance (USDC)'},
+    'xrp_grid': {'label': 'XRP Grid Bot', 'short': 'XRPGrid', 'order': 48, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    'bnb_spot_long': {'label': 'BnbSpotLongBot', 'short': 'BnbSpot', 'order': 49, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    'bnb_grid': {'label': 'BNB Grid Bot', 'short': 'BNBGrid', 'order': 49.5, 'family': 'crypto', 'exchange': 'Binance (USDC)'},
+    'poly': {'label': 'PolyKronosPaper', 'short': 'PolyKronos', 'order': 50, 'family': 'polymarket', 'ai': True, 'exchange': 'Polymarket'},
+    'pfolio': {'label': 'SOL Portfolio Spot', 'short': 'SOLPortfolio', 'order': 60, 'family': 'crypto', 'ai': True, 'exchange': 'MEXC (USDT)'},
+    # ARCHIVADO 2026-05-11:
+    # 'fabian_py': {'label': 'Fabian Python', 'short': 'FabianPy', ...} — shorts irrealistas; reemplazado por fabian_spot_long
+    # 'fabianpro': {'label': 'FabianPro', ...} — shorts + rendimiento mediocre (+$16 en 42 trades)
+    # 'mtfreg': {'label': 'MTF Regime Bot', ...} — plano (+$0.21), 5 trades, shorts
+    # 'boxbr': {'label': 'Box Breakout Bot', ...} — plano (+$0.07), 5 trades, shorts
+    # 'scalp': {'label': 'Scalping 5m Bot', ...} — plano (+$0.03), 6 trades, shorts
 }
 
 def _meta(bot: str):
-    base = {'label': bot, 'short': bot, 'order': 999, 'family': 'paper'}
+    base = {'label': bot, 'short': bot, 'order': 999, 'family': 'paper', 'ai': False}
     base.update(BOT_META.get(bot, {}))
     return base
 
@@ -153,7 +158,7 @@ def pnl_hourly(bot:str, hours:int=24):
 def _latency_checks():
     return [
       ('cTrader signal', [ROOT/'runtime/tradingview/ctrader_signal.csv'], 6*60),
-      ('Poly status', [ROOT/'runtime/polymarket/last_runner_status.json'], 130*60),
+      ('Runner status', [ROOT/'runtime/polymarket/last_runner_status.json'], 130*60),
       ('watchdog log', [ROOT/'runtime/logs/watchdog.log', Path('/Users/mimo13/.bta-run/logs/watchdog_runtime.log')], 5*60),
       ('supervisor log', [ROOT/'runtime/logs/supervisor_cycle.log', Path('/Users/mimo13/.bta-run/logs/supervisor_runtime.log')], 130*60),
     ]
@@ -292,13 +297,50 @@ def weekly_compare():
              coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
       from trades
       where ts >= now() - interval '7 day'
+        and bot_name not in ('poly','fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp')
       group by bot_name
-      order by pnl_week desc
     ''')
-    items=[]
+
+    agg={}
     for r in rows:
-        m=_meta(r[0])
-        items.append({'bot_name':r[0], 'label':m['label'], 'short':m['short'], 'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])})
+        agg[r[0]]={'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])}
+
+    # Include all bots from BOT_META except poly, and those in bot_status
+    bots_rows=q("select bot_name from bot_status where bot_name not in ('fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp') order by bot_name")
+    bot_names=[r[0] for r in bots_rows]
+    for b in BOT_META.keys():
+        if b not in bot_names:
+            bot_names.append(b)
+
+    items=[]
+    for b in bot_names:
+        m=_meta(b)
+        a=agg.get(b, {'pnl_week':0,'trades':0,'win_rate':0})
+        items.append({'bot_name':b, 'label':m['label'], 'short':m['short'], 'pnl_week':a['pnl_week'],'trades':a['trades'],'win_rate':a['win_rate']})
+
+    items.sort(key=lambda x: (x.get('order', _meta(x['bot_name']).get('order',999))))
+    return {'items':items}
+
+
+@app.get('/api/weekly-compare-candidates')
+def weekly_compare_candidates():
+    candidate_bots = ['sol_pb', 'fabian_spot_long']
+    rows=q('''
+      select bot_name,
+             coalesce(sum(pnl_usd),0) as pnl_week,
+             count(*) filter (where result in ('WIN','LOSS')) as trades,
+             coalesce(avg(case when result='WIN' then 1.0 when result='LOSS' then 0.0 end),0) as win_rate
+      from trades
+      where ts >= now() - interval '7 day'
+        and bot_name = any(%s)
+      group by bot_name
+    ''',[candidate_bots])
+    agg={r[0]:{'pnl_week':_j(r[1]),'trades':int(r[2] or 0),'win_rate':_j(r[3])} for r in rows}
+    items=[]
+    for b in candidate_bots:
+        m=_meta(b)
+        a=agg.get(b, {'pnl_week':0,'trades':0,'win_rate':0})
+        items.append({'bot_name':b, 'label':m['label'], 'short':m['short'], **a})
     return {'items':items}
 
 def _run_pfolio(cfg_path: str = ''):
@@ -318,14 +360,16 @@ def _run_pfolio(cfg_path: str = ''):
 
 @app.post('/api/bots/{bot}/start')
 def start(bot:str):
-    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro','poly':'poly','pfolio':'pfolio','turtle':'turtle'}.get(bot)
-    if bot=='fabian':
-        subprocess.run(['open','-ga','/Applications/cTrader.app'])
-        subprocess.Popen([str(ROOT/'run_bridge_cycle.sh')], cwd=ROOT)
-    elif bot=='poly':
-        subprocess.Popen([str(ROOT/'run_supervisor_cycle.sh')], cwd=ROOT)
+    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabian_spot_long':'fabian_spot_long','fabianpro':'fabianpro','poly':'poly','tv_sol':'tv_sol'}.get(bot)
+    # pfolio archivado — ver polymarket_portfolio_bot.py
+    if bot=='sol_pb':
+        # SolPullbackBot: arranca con datos de Binance
+        subprocess.Popen([str(ROOT/'.venv/bin/python'), str(ROOT/'sol_pullback_bot.py'),
+                         '--output-dir', str(ROOT/'runtime/polymarket/runs/sol_pb_'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))],
+                         cwd=ROOT)
+    # pfolio archivado
     elif bot=='pfolio':
-        _run_pfolio()
+        pass  # _run_pfolio() — archivado 2026-05-10
     # Mark as running in DB immediately
     if db_name:
         try:
@@ -342,13 +386,14 @@ def start(bot:str):
 
 @app.post('/api/bots/{bot}/stop')
 def stop(bot:str):
-    if bot=='fabian':
-        subprocess.run(['pkill','-f','cTrader'])
+    if bot=='sol_pb':
+        subprocess.run(['pkill','-f','sol_pullback_bot'])
+    # pfolio archivado
     elif bot=='pfolio':
-        subprocess.run(['pkill','-f','polymarket_portfolio_bot'])
-    db_name = {'fabian':'fabian','fabian_py':'fabian_py','fabianpro':'fabianpro',
-               'poly':'poly','pfolio':'pfolio','turtle':'turtle',
-               'fabian_live_pullback':'fabian_live_pullback','fabian_live_pro':'fabian_live_pro'}.get(bot)
+        pass
+    db_name = {'sol_pb':'sol_pb','fabian_py':'fabian_py','fabian_spot_long':'fabian_spot_long','fabianpro':'fabianpro',
+               'poly':'poly','tv_sol':'tv_sol',
+               'fabian_live_pullback':'fabian_live_pullback','fabian_live_pro':'fabian_live_pro','tv_sol':'tv_sol'}.get(bot)
     if db_name:
         try:
             with psycopg.connect(DB_URL) as c:
@@ -361,13 +406,129 @@ def stop(bot:str):
 @app.get('/api/bots')
 def bots_list():
     """List all registered bots dynamically."""
-    rows = q('select bot_name, is_running, mode from bot_status order by bot_name')
+    rows = q("select bot_name, is_running, mode from bot_status where bot_name not in ('fabian','turtle','tv_sol','fabian_live_pullback','fabian_live_pro','fabian_py','fabianpro','mtfreg','boxbr','scalp') order by bot_name")
     bots=[]
     for r in rows:
         m=_meta(r[0])
         bots.append({'name': r[0], 'is_running': r[1], 'mode': r[2], **m})
     bots.sort(key=lambda x:(x.get('order',999), x['name']))
     return {'bots': bots}
+
+@app.get('/api/ai-advisor/stats')
+def ai_advisor_stats():
+    log_path = ROOT / 'runtime/logs/ai_advisor_validations.csv'
+    if not log_path.exists():
+        return {'enabled': False, 'total': 0, 'validated': 0, 'rejected': 0, 'last_10': []}
+    import csv
+    rows = []
+    with log_path.open() as f:
+        for r in csv.DictReader(f):
+            rows.append(r)
+    total = len(rows)
+    validated = sum(1 for r in rows if r.get('decision') == 'EXECUTE')
+    rejected = max(0, total - validated)
+    last_10 = rows[-10:] if rows else []
+    return {
+        'enabled': bool(rows),
+        'total': total,
+        'validated': validated,
+        'rejected': rejected,
+        'reject_rate': round(rejected / max(1, total) * 100, 1),
+        'last_10': last_10[::-1],
+    }
+
+@app.get('/api/binance/personal-portfolio')
+def binance_personal_portfolio():
+    try:
+        from binance_client import load_client
+        client = load_client(testnet=False)
+        balances = client.get_balance()
+
+        items=[]
+        total=0.0
+        for b in balances:
+            asset=b.get('asset')
+            free=float(b.get('free') or 0)
+            locked=float(b.get('locked') or 0)
+            qty=free+locked
+            if qty<=0:
+                continue
+            usd_value=None
+            quote_asset = asset[2:] if asset.startswith('LD') and len(asset) > 2 else asset
+            if quote_asset == 'USDT':
+                usd_value=qty
+                change_24h=0.0
+            else:
+                try:
+                    t=client.get_ticker(f"{quote_asset}USDT")
+                    last_price=float(t.get('lastPrice') or 0)
+                    usd_value=qty*last_price
+                    change_24h=float(t.get('priceChangePercent') or 0)
+                except Exception:
+                    usd_value=None
+                    change_24h=None
+            if usd_value is not None:
+                total += usd_value
+            items.append({'asset':asset,'free':free,'locked':locked,'qty':qty,'usd_value':usd_value,'change_24h':change_24h})
+
+        items.sort(key=lambda x: (x.get('usd_value') is None, -(x.get('usd_value') or 0)))
+        return {'ok':True,'total_usd':total,'items':items,'updated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}
+    except Exception as e:
+        return {'ok':False,'error':str(e),'total_usd':0,'items':[]}
+
+@app.get('/api/personal-portfolio')
+def personal_portfolio():
+    cfg_path = ROOT / 'personal_portfolio_config.json'
+    if not cfg_path.exists():
+        return {'ok':False,'error':'config not found','accounts':[],'cold_wallet':{'items':[],'total':0}}
+    cfg = json.loads(cfg_path.read_text())
+    accounts = cfg.get('accounts', [])
+    cold = cfg.get('cold_wallet', [])
+    total_feb = sum(a.get('febrero', 0) for a in accounts)
+    total_abr = sum(a.get('abril', 0) for a in accounts)
+    cold_items, cold_total = [], 0.0
+    for c in cold:
+        qty = float(c.get('qty', 0))
+        asset = c.get('asset', '')
+        name = c.get('name', asset)
+        price, change_24h = None, None
+        # Try Binance first
+        try:
+            from binance_client import load_client
+            t = load_client(testnet=False).get_ticker(f"{asset}USDT")
+            price = float(t.get('lastPrice', 0))
+            change_24h = float(t.get('priceChangePercent', 0))
+        except Exception:
+            pass
+        # Fallback to MEXC public API
+        if price is None:
+            try:
+                req = urllib.request.Request(f'https://api.mexc.com/api/v3/ticker/24hr?symbol={asset}USDT',
+                    headers={'Accept': 'application/json','User-Agent':'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    t = json.loads(resp.read().decode('utf-8'))
+                    price = float(t.get('lastPrice', 0))
+                    change_24h = float(t.get('priceChangePercent', 0))
+            except Exception:
+                pass
+        usd_value = qty * price if price else None
+        if usd_value:
+            cold_total += usd_value
+        cold_items.append({'asset':asset,'name':name,'qty':round(qty,4),'price':price,'usd_value':round(usd_value,2) if usd_value else None,'change_24h':change_24h})
+    return {'ok':True,'accounts':accounts,'totals':{'febrero':round(total_feb,2),'abril':round(total_abr,2),'change':round(total_abr-total_feb,2),'change_pct':round((total_abr/max(1,total_feb)-1)*100,1)},'cold_wallet':{'items':cold_items,'total':round(cold_total,2)},'updated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}
+
+@app.post('/api/personal-portfolio/save')
+def personal_portfolio_save(data: dict):
+    cfg_path = ROOT / 'personal_portfolio_config.json'
+    if not cfg_path.exists():
+        return {'ok':False}
+    current = json.loads(cfg_path.read_text())
+    if 'accounts' in data:
+        current['accounts'] = data['accounts']
+    if 'cold_wallet' in data:
+        current['cold_wallet'] = data['cold_wallet']
+    cfg_path.write_text(json.dumps(current, indent=2, ensure_ascii=False))
+    return {'ok':True}
 
 @app.get('/api/health')
 def health():

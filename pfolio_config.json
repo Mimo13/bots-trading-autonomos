@@ -1,0 +1,18 @@
+{
+  "initial_balance": 100.0,
+  "symbol": "SOLUSDT",
+  "rsi_period": 14,
+  "rsi_buy_threshold": 30,
+  "rsi_sell_threshold": 70,
+  "rsi_strong_buy": 22,
+  "risk_per_trade": 0.05,
+  "risk_strong": 0.08,
+  "max_position_pct": 0.25,
+  "atr_period": 14,
+  "atr_stop_mult": 2.0,
+  "take_profit_pct": 0.025,
+  "stop_loss_pct": 0.015,
+  "max_hold_candles": 24,
+  "max_trades_per_day": 6,
+  "max_daily_loss_pct": 3.0
+}

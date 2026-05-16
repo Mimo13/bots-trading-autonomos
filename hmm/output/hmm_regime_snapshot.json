@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-05-12T19:30:44.873051Z",
+  "regime": "bull",
+  "confidence": 0.9993,
+  "reason": "hmm_multi_symbol: most_conservative_is_bull",
+  "symbols": [
+    {
+      "symbol": "SOLUSDT",
+      "timeframe": "4h",
+      "regime": "bull",
+      "confidence": 0.9992,
+      "hmm_states": 5,
+      "hmm_state": 0,
+      "reason": "positive_trend vol=0.1445 cumret=0.0056 mom=0.0057",
+      "metrics": {
+        "data_source": "binance_remote_4h",
+        "bars_5m": 300,
+        "bars_resampled": 360,
+        "feature_rows": 340,
+        "last_close": 94.61,
+        "last_bar_at": "2026-05-12T16:00:00",
+        "volatility": 0.144513,
+        "cumulative_return": 0.005626,
+        "momentum": 0.005715,
+        "bic": 1803.295,
+        "feature_scaling": "StandardScaler"
+      },
+      "transition_probs": {
+        "state_0": 0.8901,
+        "state_1": 0.0331,
+        "state_2": 0.0601,
+        "state_3": 0.0,
+        "state_4": 0.0167
+      }
+    },
+    {
+      "symbol": "XRPUSDT",
+      "timeframe": "4h",
+      "regime": "bull",
+      "confidence": 0.9994,
+      "hmm_states": 5,
+      "hmm_state": 2,
+      "reason": "positive_trend vol=0.1401 cumret=0.0004 mom=0.0004",
+      "metrics": {
+        "data_source": "binance_remote_4h",
+        "bars_5m": 300,
+        "bars_resampled": 360,
+        "feature_rows": 340,
+        "last_close": 1.4395,
+        "last_bar_at": "2026-05-12T16:00:00",
+        "volatility": 0.1401,
+        "cumulative_return": 0.000392,
+        "momentum": 0.000398,
+        "bic": 1545.965,
+        "feature_scaling": "StandardScaler"
+      },
+      "transition_probs": {
+        "state_0": 0.3369,
+        "state_1": 0.2544,
+        "state_2": 0.3925,
+        "state_3": 0.0,
+        "state_4": 0.0161
+      }
+    }
+  ]
+}

@@ -17,10 +17,13 @@ POLY_ENRICHED = ROOT / 'runtime/polymarket/polymarket_input_enriched.csv'
 POLY_CONFIG = ROOT / 'polymarket_paper_config.example.json'
 PORTFOLIO_CONFIG = ROOT / 'polymarket_portfolio_config.json'
 FABIAN_CONFIG = ROOT / 'fabian_config_crypto.json'
+FABIAN_SPOT_LONG_CONFIG = ROOT / 'fabian_spot_long_config.json'
 FABIANPRO_CONFIG = ROOT / 'fabian_pro_config.json'
 TURTLE_CONFIG = ROOT / 'turtle_bot_config.json'
 POLY_RUNS_DIR = ROOT / 'runtime/polymarket/runs'
 XRP_GRID_CONFIG = ROOT / 'xrp_grid_config.json'
+BNB_SPOT_LONG_CONFIG = ROOT / 'bnb_spot_long_config.json'
+BNB_GRID_CONFIG = ROOT / 'bnb_grid_config.json'
 PYTHON = str(ROOT / '.venv/bin/python')
 
 INITIAL_BALANCE = 100.0
@@ -46,6 +49,7 @@ def run() -> dict:
         'ts_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         'ctrader_signal_written': False,
         'notes': [],
+        'archived_skipped': ['fabian_py (→fabian_spot_long)', 'fabianpro', 'mtfreg', 'boxbr', 'scalp', 'pfolio'],
     }
 
     # cTrader signal (always runs, independent)
@@ -54,6 +58,23 @@ def run() -> dict:
         status['ctrader_signal_written'] = True
     except Exception as e:
         status['notes'].append(f'ctrader signal failed: {str(e)[:80]}')
+
+    # Fetch live data for all bot symbols from Binance
+    try:
+        from data_fetcher import update_feed_file
+        feed_symbols = ['SOLUSDT', 'XRPUSDT', 'BNBUSDC', 'ADAUSDT', 'DOGEUSDT', 'BTCUSDT']
+        feed_dir = ROOT / 'runtime' / 'live'
+        for sym in feed_symbols:
+            try:
+                p = update_feed_file(sym, '5m', feed_dir)
+                if p:
+                    status['notes'].append(f'feed {sym}: ok')
+                else:
+                    status['notes'].append(f'feed {sym}: no data')
+            except Exception as fe:
+                status['notes'].append(f'feed {sym}: {str(fe)[:60]}')
+    except Exception as e:
+        status['notes'].append(f'live data fetch: {str(e)[:80]}')
 
     # Use live data feed first, then fall back to polymarket input
     poly_input = LIVE_FEED if LIVE_FEED.exists() else (POLY_ENRICHED if POLY_ENRICHED.exists() else POLY_BASE)
@@ -75,29 +96,28 @@ def run() -> dict:
     if s: status['poly_summary'] = s
     if tmp.exists(): tmp.unlink()
 
-    # 2. PolyPortfolioPaper — cartera
-    cfg2 = json.loads(PORTFOLIO_CONFIG.read_text())
-    cfg2['initial_balance'] = INITIAL_BALANCE
-    tmp2 = POLY_RUNS_DIR / f'_cfg_port_{ts}.json'
-    tmp2.write_text(json.dumps(cfg2))
-    out2 = POLY_RUNS_DIR / f'portfolio_{ts}'
-    cmd2 = [PYTHON, str(ROOT / 'polymarket_portfolio_bot.py'),
-            '--input', str(poly_input), '--config', str(tmp2), '--output-dir', str(out2)]
-    s2 = run_bot(cmd2, 'portfolio', 'final_balance', status)
-    if s2: status['portfolio_summary'] = s2
-    if tmp2.exists(): tmp2.unlink()
+    # [ARCHIVADO 2026-05-14] SOL Portfolio Spot (pfolio) — RSI simple sobre SOL.
+    # Resultado: -$0.54 7d, 94 trades, WR 53.2%, edge negativo tras costes/timeout.
+    # Aprendizaje: RSI mean-reversion 5m sin filtro de régimen/tendencia queda en churn;
+    # sustituido por SolPullbackBot, FabianSpotLong y Portfolio Mirror.
 
-    # 3. FabiánPullback Python — estructura/ruptura
-    cfg3 = json.loads(FABIAN_CONFIG.read_text())
-    cfg3['initial_balance'] = INITIAL_BALANCE
-    tmp3 = POLY_RUNS_DIR / f'_cfg_fabian_{ts}.json'
-    tmp3.write_text(json.dumps(cfg3))
-    out3 = POLY_RUNS_DIR / f'fabian_{ts}'
-    cmd3 = [PYTHON, str(ROOT / 'fabian_pullback_bot.py'),
-            '--input', str(poly_input), '--config', str(tmp3), '--output-dir', str(out3)]
-    s3 = run_bot(cmd3, 'fabian', 'final_balance', status)
-    if s3: status['fabian_summary'] = s3
-    if tmp3.exists(): tmp3.unlink()
+    # [ARCHIVADO 2026-05-11] FabiánPullback Python — estructura/ruptura con shorts
+    # Reemplazado por FabianSpotLong (3b). Los shorts no son replicables en spot.
+    # cfg3 = json.loads(FABIAN_CONFIG.read_text())
+    # ...
+
+    # 3b. FabianSpotLong — Fabián adaptado a spot long-only para comparar con SolPullback
+    cfg3b = json.loads(FABIAN_SPOT_LONG_CONFIG.read_text())
+    cfg3b['initial_balance'] = INITIAL_BALANCE
+    cfg3b['spot_long_only'] = True
+    tmp3b = POLY_RUNS_DIR / f'_cfg_fabian_spot_long_{ts}.json'
+    tmp3b.write_text(json.dumps(cfg3b))
+    out3b = POLY_RUNS_DIR / f'fabian_spot_long_{ts}'
+    cmd3b = [PYTHON, str(ROOT / 'fabian_pullback_bot.py'),
+             '--input', str(poly_input), '--config', str(tmp3b), '--output-dir', str(out3b)]
+    s3b = run_bot(cmd3b, 'fabian_spot_long', 'final_balance', status)
+    if s3b: status['fabian_spot_long_summary'] = s3b
+    if tmp3b.exists(): tmp3b.unlink()
 
     # 4. FabianPro — estructura mejorada + ADX/ATR + cartera
     cfg4 = json.loads(FABIANPRO_CONFIG.read_text())
@@ -136,6 +156,13 @@ def run() -> dict:
 #         else:
 #             status['notes'].append(f'turtle failed: {cp5.stderr.strip()[:150]}')
 
+    # 5b. SolPullbackBot — pullback en SOL/USDT con RSI/ATR/EMA (4h, datos Binance)
+    out5b = POLY_RUNS_DIR / f'sol_pb_{ts}'
+    cmd5b = [PYTHON, str(ROOT / 'sol_pullback_bot.py'),
+             '--output-dir', str(out5b), '--limit', '200']
+    s5b = run_bot(cmd5b, 'sol_pb', 'final_balance', status)
+    if s5b: status['sol_pb_summary'] = s5b
+
     # 6. XRP Grid Bot — cuadrícula dinámica asistida por IA
     xrp_feed = ROOT / 'runtime/live/XRPUSDT_5m.csv'
     if xrp_feed.exists():
@@ -149,6 +176,36 @@ def run() -> dict:
         s6 = run_bot(cmd6, 'xrp_grid', 'final_balance', status)
         if s6: status['xrp_grid_summary'] = s6
         if tmp6.exists(): tmp6.unlink()
+
+    # 6b. BnbSpotLongBot — Fabián spot long-only en BNB/USDC
+    bnb_feed = ROOT / 'runtime/live/BNBUSDC_5m.csv'
+    if bnb_feed.exists():
+        cfg6b = json.loads(BNB_SPOT_LONG_CONFIG.read_text())
+        cfg6b['initial_balance'] = INITIAL_BALANCE
+        cfg6b['spot_long_only'] = True
+        cfg6b['symbol'] = 'BNBUSDC'
+        tmp6b = POLY_RUNS_DIR / f'_cfg_bnb_spot_long_{ts}.json'
+        tmp6b.write_text(json.dumps(cfg6b))
+        out6b = POLY_RUNS_DIR / f'bnb_spot_long_{ts}'
+        cmd6b = [PYTHON, str(ROOT / 'fabian_pullback_bot.py'),
+                 '--input', str(bnb_feed), '--config', str(tmp6b), '--output-dir', str(out6b)]
+        s6b = run_bot(cmd6b, 'bnb_spot_long', 'final_balance', status)
+        if s6b: status['bnb_spot_long_summary'] = s6b
+        if tmp6b.exists(): tmp6b.unlink()
+
+    # 6c. BNB Grid Bot — misma lógica grid dinámica que XRP Grid, en BNB/USDC
+    if bnb_feed.exists():
+        out6c = POLY_RUNS_DIR / f'bnb_grid_{ts}'
+        cfg6c = json.loads(BNB_GRID_CONFIG.read_text())
+        cfg6c['initial_balance'] = INITIAL_BALANCE
+        cfg6c['symbol'] = 'BNBUSDC'
+        tmp6c = POLY_RUNS_DIR / f'_cfg_bnb_grid_{ts}.json'
+        tmp6c.write_text(json.dumps(cfg6c))
+        cmd6c = [PYTHON, str(ROOT / 'xrp_grid_bot.py'),
+                 '--input', str(bnb_feed), '--config', str(tmp6c), '--output-dir', str(out6c)]
+        s6c = run_bot(cmd6c, 'bnb_grid', 'final_balance', status)
+        if s6c: status['bnb_grid_summary'] = s6c
+        if tmp6c.exists(): tmp6c.unlink()
 
     # 7. AI Grid Advisor (recalcular cuadrícula)
     try:
@@ -192,6 +249,39 @@ def run() -> dict:
     s10 = run_bot(cmd10, 'scalp', 'final_balance', status)
     if s10: status['scalp_summary'] = s10
     if tmp10.exists(): tmp10.unlink()
+
+    # Paper Fleet Orchestrator — update regime before Portfolio Mirror reads targets.
+    try:
+        cp_orch = subprocess.run([PYTHON, str(ROOT / 'scripts/bot_orchestrator.py')],
+                                 cwd=ROOT, capture_output=True, text=True, timeout=30)
+        status['orchestrator_ran'] = (cp_orch.returncode == 0)
+        if cp_orch.returncode != 0:
+            status['notes'].append(f'orchestrator error: {cp_orch.stderr.strip()[:150]}')
+    except Exception as e:
+        status['orchestrator_ran'] = False
+        status['notes'].append(f'orchestrator exception: {str(e)[:120]}')
+
+    # Portfolio Mirror Bot — rebalanceo sistemático sobre el portfolio real de Binance
+    portfolio_runs = ROOT / 'runtime/portfolio/runs'
+    portfolio_runs.mkdir(parents=True, exist_ok=True)
+    out_pmb = portfolio_runs / f'portfolio_mirror_{ts}'
+    cfg_pmb = ROOT / 'portfolio_paper_config.json'
+    # Tomar régimen más reciente del orquestador si existe
+    regime = 'sideways'
+    state_path = ROOT / 'runtime/orchestrator/state.json'
+    if state_path.exists():
+        try:
+            sd = json.loads(state_path.read_text())
+            regime = sd.get('regime', {}).get('regime', 'sideways')
+        except Exception:
+            pass
+    cmd_pmb = [PYTHON, str(ROOT / 'portfolio_paper_bot.py'),
+               '--config', str(cfg_pmb),
+               '--output-dir', str(out_pmb),
+               '--regime', regime,
+               '--snapshot', str(ROOT / 'runtime/portfolio/snapshot.json')]
+    s_pmb = run_bot(cmd_pmb, 'portfolio_paper_bot', 'final_balance', status)
+    if s_pmb: status['portfolio_mirror_summary'] = s_pmb
 
     # Obsidian log (optional)
     subprocess.run(['python3', str(ROOT / 'update_obsidian_trading_log.py')],

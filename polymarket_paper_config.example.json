@@ -1,6 +1,6 @@
 {
   "initial_equity": 100.0,
-  "edge_min": 0.05,
+  "edge_min": 0.0001,
   "tv_filter_enabled": false,
   "tv_min_confidence": 0.55,
   "tv_alignment_required": false,
@@ -9,11 +9,11 @@
   "adx_period": 14,
   "adx_min": 18.0,
   "payout_multiplier": 0.95,
-  "kelly_fraction": 0.10,
+  "kelly_fraction": 1.0,
   "max_risk_per_trade": 0.02,
-  "max_daily_loss_percent": 5.0,
-  "max_trades_per_day": 15,
-  "loss_streak_pause": 3,
+  "max_daily_loss_percent": 15.0,
+  "max_trades_per_day": 8,
+  "loss_streak_pause": 2,
   "pause_hours": 12,
   "only_up": true
 }

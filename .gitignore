@@ -1,1 +1,23 @@
+# Environment files
+.env
 .env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime
+runtime/logs/
+runtime/runs/
+runtime/orchestrator/
+**/ab_baseline_*/
+**/ab_candidate_*/
+
+# OS
+.DS_Store
+openswarm/
+openswarm/
+runtime/logs/
+runtime/runs/
+**.pyc

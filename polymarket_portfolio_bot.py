@@ -1,468 +1,385 @@
 #!/usr/bin/env python3
 """
-PolyPortfolioPaper — Bot de cartera para Polymarket Paper Trading.
+PolyPortfolioPaper v2 — Bot de cartera para SOL/USDT con señales TA reales.
 
-Modelo realista con compra/venta de tokens, inventario, y P&L.
-- Compra tokens cuando modelo ve oportunidad (edge > mínimo)
-- Acumula tokens en cartera
-- Vende cuando hay señal de reversión, take profit, o stop loss
-- P&L realizado al vender, no realizado marcado a mercado
+Reescrito 2026-05-10 para sustituir el modelo de señales fake (p_model_up basado
+en momentum heuristic) por indicadores técnicos reales calculados desde OHLCV.
+
+Estrategia:
+- RSI(14): comprar cuando RSI < 35 (sobrevendido), vender cuando RSI > 65 (sobrecomprado)
+- Scale-in: compras más agresivas cuanto más bajo el RSI
+- ATR(14): position sizing dinámico
+- Take Profit: +4% desde avg entry | Stop Loss: -2.5%
+- Timeout: 30 velas 5m (2.5h) máximo por posición
+- Máximo 6 trades/día, pérdida diaria max 10%
 """
 from __future__ import annotations
 
 import argparse
 import csv
 import json
-import math
-from collections import Counter
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
 
 @dataclass
-class Candle:
-    ts: datetime
-    instrument: str
-    timeframe: str
-    open: float
-    high: float
-    low: float
-    close: float
-    p_model_up: float
-    p_market_up: float
-    tv_recommendation: str = ""
-    tv_confidence: float = 0.0
-
-
-@dataclass
 class PortfolioConfig:
     initial_balance: float = 100.0
-    buy_threshold: float = 0.65        # p_model_up above this = BUY signal
-    sell_threshold: float = 0.35       # p_model_up below this = SELL signal
-    edge_min: float = 0.05             # min |p_model_up - p_market_up|
-    risk_per_trade: float = 0.10       # % of balance to spend per buy
-    max_position_pct: float = 0.30     # max % of balance in a single position
-    take_profit_pct: float = 0.04      # sell if price rises X% above avg entry
-    stop_loss_pct: float = 0.025       # sell if price drops X% below avg entry
-    sell_on_reversal: bool = True      # sell all when signal reverses
-    sell_fraction_on_signal: float = 1.0  # fraction to sell on reversal (1.0 = all)
-    max_hold_candles: int = 15         # max candles to hold before forced sell
+    symbol: str = "SOLUSDT"
+
+    # RSI thresholds
+    rsi_period: int = 14
+    rsi_buy_threshold: float = 35.0       # comprar cuando RSI < esto
+    rsi_sell_threshold: float = 65.0       # vender cuando RSI > esto
+    rsi_strong_buy: float = 25.0           # compra más agresiva si RSI < esto
+
+    # Position sizing
+    risk_per_trade: float = 0.08           # % del balance por compra normal
+    risk_strong: float = 0.15              # % del balance en compra fuerte (RSI muy bajo)
+    max_position_pct: float = 0.40         # max % del balance en SOL
+
+    # ATR
+    atr_period: int = 14
+    atr_stop_mult: float = 2.0
+
+    # Take Profit / Stop Loss
+    take_profit_pct: float = 0.04          # +4%
+    stop_loss_pct: float = 0.025           # -2.5%
+
+    # Risk
+    max_hold_candles: int = 30             # 30 * 5m = 2.5h
     max_trades_per_day: int = 6
     max_daily_loss_pct: float = 10.0
 
 
-@dataclass
-class Position:
-    symbol: str
-    qty: float = 0.0
-    avg_entry: float = 0.0
-    cost_basis: float = 0.0  # total USD spent
+def compute_rsi(closes: List[float], period: int = 14) -> float:
+    if len(closes) < period + 1:
+        return 50.0
+    gains, losses = [], []
+    for i in range(1, len(closes)):
+        delta = closes[i] - closes[i - 1]
+        gains.append(max(delta, 0))
+        losses.append(max(-delta, 0))
+    avg_gain = sum(gains[-period:]) / period
+    avg_loss = sum(losses[-period:]) / period
+    if avg_loss == 0:
+        return 100.0
+    return 100.0 - (100.0 / (1.0 + avg_gain / avg_loss))
 
 
-@dataclass
-class TradeRecord:
-    entry_ts: datetime
-    exit_ts: Optional[datetime]
-    symbol: str
-    side: str  # BUY or SELL
-    qty: float
-    price: float
-    usd_amount: float
-    realized_pnl: float
-    reason: str
+def compute_atr(highs: List[float], lows: List[float], closes: List[float], period: int = 14) -> float:
+    if len(closes) < period + 1:
+        return 0.01
+    tr = []
+    for i in range(1, len(closes)):
+        h_l = highs[i] - lows[i]
+        h_pc = abs(highs[i] - closes[i - 1])
+        l_pc = abs(lows[i] - closes[i - 1])
+        tr.append(max(h_l, h_pc, l_pc))
+    return sum(tr[-period:]) / period
 
 
-def parse_ts(s: str) -> datetime:
-    s = s.strip()
-    if s.endswith("Z"):
-        s = s[:-1] + "+00:00"
-    dt = datetime.fromisoformat(s)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
-
-
-def load_candles(path: Path) -> List[Candle]:
-    rows: List[Candle] = []
-    with path.open("r", newline="", encoding="utf-8") as f:
-        r = csv.DictReader(f)
-        required = {"timestamp_utc", "instrument", "timeframe", "open", "high", "low", "close", "p_model_up", "p_market_up"}
-        has_tv = ("tv_recommendation" in (r.fieldnames or [])) and ("tv_confidence" in (r.fieldnames or []))
-        missing = required - set(r.fieldnames or [])
-        if missing:
-            raise ValueError(f"Missing columns: {sorted(missing)}")
-        for row in r:
-            rows.append(Candle(
-                ts=parse_ts(row["timestamp_utc"]),
-                instrument=row["instrument"].strip(),
-                timeframe=row["timeframe"].strip(),
-                open=float(row["open"]),
-                high=float(row["high"]),
-                low=float(row["low"]),
-                close=float(row["close"]),
-                p_model_up=float(row["p_model_up"]),
-                p_market_up=float(row["p_market_up"]),
-                tv_recommendation=(row.get("tv_recommendation", "") if has_tv else "").strip().upper(),
-                tv_confidence=float(row.get("tv_confidence", 0.0) or 0.0) if has_tv else 0.0,
-            ))
-    rows.sort(key=lambda x: x.ts)
+def load_candles(path: Path) -> List[dict]:
+    rows = []
+    with path.open() as f:
+        for r in csv.DictReader(f):
+            try:
+                rows.append({
+                    'ts': r.get('timestamp_utc') or r.get('ts', ''),
+                    'symbol': r.get('instrument') or r.get('symbol', 'SOLUSDT'),
+                    'open': float(r.get('open', 0)),
+                    'high': float(r.get('high', 0)),
+                    'low': float(r.get('low', 0)),
+                    'close': float(r.get('close', 0)),
+                    'volume': float(r.get('volume', 0)),
+                })
+            except Exception:
+                continue
     return rows
 
 
-def load_config(path: Optional[Path]) -> PortfolioConfig:
-    if path is None:
-        return PortfolioConfig()
-    data = json.loads(path.read_text(encoding="utf-8"))
-    c = PortfolioConfig()
-    for k, v in data.items():
-        if not hasattr(c, k):
-            raise ValueError(f"Unknown config key: {k}")
-        setattr(c, k, v)
-    return c
-
-
-def compute_sma(prices: List[float], period: int) -> float:
-    if len(prices) < period:
-        return prices[-1] if prices else 0.0
-    return sum(prices[-period:]) / period
-
-
-def run_portfolio_sim(candles: List[Candle], cfg: PortfolioConfig, out_dir: Path) -> Dict:
+def run_simulation(candles: List[dict], cfg: PortfolioConfig, out_dir: Path) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    decisions_path = out_dir / "decisions_log.csv"
-    trades_path = out_dir / "trades_log.csv"
-    portfolio_path = out_dir / "portfolio_snapshots.csv"
-    summary_path = out_dir / "summary.json"
-
-    dec_fields = ["timestamp_utc", "instrument", "action", "reason_code",
-                   "p_model_up", "p_market_up", "edge", "balance", "position_qty",
-                   "position_value", "total_equity", "price"]
-    tr_fields = ["ts", "symbol", "side", "qty", "price", "usd_amount", "realized_pnl", "reason"]
-    pf_fields = ["ts", "balance", "position_qty", "avg_entry", "position_value",
-                  "unrealized_pnl", "realized_pnl", "total_equity", "price"]
+    tlog = out_dir / 'trades_log.csv'
+    dlog = out_dir / 'decisions_log.csv'
+    sump = out_dir / 'summary.json'
 
     balance = cfg.initial_balance
-    position = Position(symbol=candles[0].instrument if candles else "")
+    position_qty = 0.0
+    cost_basis = 0.0
+    avg_entry = 0.0
     realized_pnl = 0.0
+    candles_held = 0
+    day_trades = 0
+    last_day = ''
+    daily_pnl = 0.0
     peak_equity = cfg.initial_balance
     max_dd = 0.0
-    day_trades: Dict[str, int] = {}
-    daily_realized_pnl: Dict[str, float] = {}
-    day_start_balance: Dict[str, float] = {}
-    reason_counts: Counter = Counter()
+    wins = 0
+    losses = 0
 
-    trades_log: List[TradeRecord] = []
+    with open(tlog, 'w', newline='') as tf, open(dlog, 'w', newline='') as df:
+        tw = csv.DictWriter(tf, fieldnames=[
+            'ts', 'symbol', 'side', 'qty', 'price', 'usd_amount',
+            'realized_pnl', 'reason'
+        ])
+        dw = csv.DictWriter(df, fieldnames=[
+            'timestamp_utc', 'instrument', 'action', 'reason_code',
+            'rsi', 'atr', 'balance', 'position_qty', 'position_value',
+            'total_equity', 'price'
+        ])
+        tw.writeheader()
+        dw.writeheader()
 
-    def equity():
-        pos_val = position.qty * last_price if last_price else 0.0
-        return balance + pos_val
+        closes = [c['close'] for c in candles]
+        highs = [c['high'] for c in candles]
+        lows = [c['low'] for c in candles]
 
-    def position_value():
-        return position.qty * last_price if last_price else 0.0
-
-    def unrealized():
-        if position.qty <= 0 or position.avg_entry <= 0:
-            return 0.0
-        return position.qty * (last_price - position.avg_entry)
-
-    def day_key(ts: datetime) -> str:
-        return ts.date().isoformat()
-
-    def check_daily_loss(dk: str) -> bool:
-        if dk not in day_start_balance:
-            day_start_balance[dk] = balance + position_value()
-        start_eq = day_start_balance[dk]
-        if start_eq <= 0:
-            return True
-        current_eq = equity()
-        loss_pct = max(0, (start_eq - current_eq) / start_eq) * 100
-        return loss_pct >= cfg.max_daily_loss_pct
-
-    last_price = candles[0].close if candles else 0.0
-    candles_held = 0
-
-    with (decisions_path.open("w", newline="", encoding="utf-8") as dfile,
-          trades_path.open("w", newline="", encoding="utf-8") as tfile,
-          portfolio_path.open("w", newline="", encoding="utf-8") as pfile):
-
-        dwr = csv.DictWriter(dfile, fieldnames=dec_fields)
-        twr = csv.DictWriter(tfile, fieldnames=tr_fields)
-        pwr = csv.DictWriter(pfile, fieldnames=pf_fields)
-        dwr.writeheader()
-        twr.writeheader()
-        pwr.writeheader()
+        warmup = cfg.rsi_period + cfg.atr_period + 5
 
         for i, c in enumerate(candles):
-            last_price = c.close
-            dk = day_key(c.ts)
-            day_trades.setdefault(dk, 0)
-            daily_realized_pnl.setdefault(dk, 0.0)
+            price = c['close']
+            if price <= 0:
+                continue
+
+            # Daily reset
+            day_key = c['ts'][:10] if c['ts'] else ''
+            if day_key and day_key != last_day:
+                last_day = day_key
+                day_trades = 0
+                daily_pnl = 0.0
 
             action = "HOLD"
             reason = ""
+            trade_side = ""
             qty_traded = 0.0
             usd_amount = 0.0
             trade_pnl = 0.0
-            trade_side = ""
             trade_reason = ""
 
-            p_up = c.p_model_up
-            p_mkt = c.p_market_up
-            edge = abs(p_up - p_mkt)
-
-            # Skip first few candles to build history
-            if i < 10:
+            if i < warmup:
                 reason = "WARMUP"
-                dwr.writerow({"timestamp_utc": c.ts.isoformat(), "instrument": c.instrument,
-                              "action": action, "reason_code": reason,
-                              "p_model_up": round(p_up, 6), "p_market_up": round(p_mkt, 6),
-                              "edge": round(edge, 6), "balance": round(balance, 2),
-                              "position_qty": round(position.qty, 6),
-                              "position_value": round(position_value(), 2),
-                              "total_equity": round(equity(), 2), "price": round(c.close, 2)})
-                pwr.writerow({"ts": c.ts.isoformat(), "balance": round(balance, 2),
-                              "position_qty": round(position.qty, 6),
-                              "avg_entry": round(position.avg_entry, 6) if position.avg_entry else 0,
-                              "position_value": round(position_value(), 2),
-                              "unrealized_pnl": round(unrealized(), 4),
-                              "realized_pnl": round(realized_pnl, 4),
-                              "total_equity": round(equity(), 2), "price": round(c.close, 2)})
-                continue
+            else:
+                # Compute TA
+                rsi = compute_rsi(closes[:i + 1], cfg.rsi_period)
+                atr = compute_atr(highs[:i + 1], lows[:i + 1], closes[:i + 1], cfg.atr_period)
 
-            # Hard gates
-            if day_trades[dk] >= cfg.max_trades_per_day:
-                reason = "MAX_TRADES_DAY"
-            elif check_daily_loss(dk):
-                reason = "DAILY_LOSS_LIMIT"
+                # Hard gates
+                if day_trades >= cfg.max_trades_per_day:
+                    reason = "MAX_TRADES_DAY"
+                elif daily_pnl < -(cfg.max_daily_loss_pct / 100.0) * cfg.initial_balance:
+                    reason = "DAILY_LOSS_LIMIT"
 
-            if not reason and edge < cfg.edge_min:
-                reason = "EDGE_TOO_LOW"
-
-            # Decision logic
-            if not reason:
-                if p_up >= cfg.buy_threshold and p_up > p_mkt:
-                    # BUY signal
-                    action = "BUY"
-                    # How much to spend
-                    spend = balance * cfg.risk_per_trade
-                    max_allowed = balance * cfg.max_position_pct
-                    spend = min(spend, max_allowed)
-                    if spend > 0.1 and c.close > 0:
-                        qty = spend / c.close
-                        # Add to position (dollar-cost averaging)
-                        old_cost = position.cost_basis
-                        old_qty = position.qty
-                        position.cost_basis = old_cost + spend
-                        position.qty = old_qty + qty
-                        position.avg_entry = position.cost_basis / position.qty if position.qty > 0 else 0
-                        balance -= spend
-                        qty_traded = qty
-                        usd_amount = spend
-                        trade_side = "BUY"
-                        trade_reason = "SIGNAL_BUY"
-                        day_trades[dk] += 1
-                        trades_log.append(TradeRecord(
-                            entry_ts=c.ts, exit_ts=None, symbol=c.instrument,
-                            side="BUY", qty=qty, price=c.close, usd_amount=spend,
-                            realized_pnl=0.0, reason="SIGNAL_BUY"
-                        ))
-
-                elif p_up <= cfg.sell_threshold and p_up < p_mkt and position.qty > 0:
-                    # SELL signal — sell holdings
-                    action = "SELL"
-                    sell_qty = position.qty * cfg.sell_fraction_on_signal
-                    sell_qty = min(sell_qty, position.qty)
-                    if sell_qty > 0 and c.close > 0:
-                        proceeds = sell_qty * c.close
-                        # PnL = proceeds - cost of shares sold
-                        cost_of_sold = (sell_qty / position.qty) * position.cost_basis if position.qty > 0 else 0
-                        trade_pnl = proceeds - cost_of_sold
-                        realized_pnl += trade_pnl
-                        daily_realized_pnl[dk] += trade_pnl
-                        balance += proceeds
-                        position.qty -= sell_qty
-                        position.cost_basis -= cost_of_sold
-                        if position.qty <= 0.000001:
-                            position.qty = 0.0
-                            position.cost_basis = 0.0
-                            position.avg_entry = 0.0
+                if not reason:
+                    # BUY signal: RSI oversold
+                    if rsi < cfg.rsi_buy_threshold and position_qty < 0.0001:
+                        action = "BUY"
+                        # Scale position size based on RSI depth
+                        if rsi < cfg.rsi_strong_buy:
+                            risk = cfg.risk_strong
                         else:
-                            position.avg_entry = position.cost_basis / position.qty if position.qty > 0 else 0
-                        qty_traded = sell_qty
+                            risk = cfg.risk_per_trade
+                        spend = balance * risk
+                        max_spend = balance * cfg.max_position_pct
+                        spend = min(spend, max_spend)
+                        if spend > 0.5 and price > 0:
+                            qty = spend / price
+                            cost_basis += spend
+                            position_qty += qty
+                            avg_entry = cost_basis / position_qty
+                            balance -= spend
+                            qty_traded = qty
+                            usd_amount = spend
+                            trade_side = "BUY"
+                            trade_reason = f"RSI_BUY_{rsi:.0f}"
+                            day_trades += 1
+
+                    # SELL signal: RSI overbought
+                    elif rsi > cfg.rsi_sell_threshold and position_qty > 0.0001:
+                        action = "SELL"
+                        proceeds = position_qty * price
+                        trade_pnl = proceeds - cost_basis
+                        realized_pnl += trade_pnl
+                        daily_pnl += trade_pnl
+                        balance += proceeds
+                        qty_traded = position_qty
                         usd_amount = proceeds
                         trade_side = "SELL"
-                        trade_reason = "SIGNAL_SELL"
-                        day_trades[dk] += 1
+                        trade_reason = f"RSI_SELL_{rsi:.0f}"
+                        day_trades += 1
+                        if trade_pnl > 0:
+                            wins += 1
+                        else:
+                            losses += 1
+                        position_qty = 0.0
+                        cost_basis = 0.0
+                        avg_entry = 0.0
+                        candles_held = 0
 
-            # Track hold duration
-            if position.qty > 0.000001:
-                candles_held += 1
-            else:
-                candles_held = 0
+                # Track hold duration
+                if position_qty > 0.0001:
+                    candles_held += 1
+                else:
+                    candles_held = 0
 
-            # Force sell if held too long
-            if position.qty > 0.000001 and candles_held >= cfg.max_hold_candles and action != "SELL":
-                action = "TIMEOUT_SELL"
-                trade_pnl = (last_price - position.avg_entry) * position.qty
-                proceeds = position.qty * last_price
-                realized_pnl += trade_pnl
-                daily_realized_pnl[dk] += trade_pnl
-                balance += proceeds
-                trade_side = "SELL"
-                trade_reason = "MAX_HOLD"
-                qty_traded = position.qty
-                usd_amount = proceeds
-                position.qty = 0.0
-                position.cost_basis = 0.0
-                position.avg_entry = 0.0
-                candles_held = 0
-
-            # Take profit / Stop loss checks (after signal-based actions)
-            if position.qty > 0.000001 and position.avg_entry > 0 and last_price > 0:
-                pnl_pct = (last_price - position.avg_entry) / position.avg_entry
-                if pnl_pct >= cfg.take_profit_pct and action != "SELL":
-                    # Take profit
-                    action = "TP_SELL"
-                    sell_qty = position.qty
-                    proceeds = sell_qty * last_price
-                    cost_of_sold = position.cost_basis
-                    trade_pnl = proceeds - cost_of_sold
+                # Timeout: force sell if held too long
+                if position_qty > 0.0001 and candles_held >= cfg.max_hold_candles and action != "SELL":
+                    action = "TIMEOUT_SELL"
+                    trade_pnl = (price - avg_entry) * position_qty
+                    proceeds = position_qty * price
                     realized_pnl += trade_pnl
-                    daily_realized_pnl[dk] += trade_pnl
+                    daily_pnl += trade_pnl
                     balance += proceeds
                     trade_side = "SELL"
-                    trade_reason = "TAKE_PROFIT"
-                    qty_traded = sell_qty
+                    trade_reason = "MAX_HOLD"
+                    qty_traded = position_qty
                     usd_amount = proceeds
-                    position.qty = 0.0
-                    position.cost_basis = 0.0
-                    position.avg_entry = 0.0
-                    day_trades[dk] -= 1  # don't count TP as a trade for daily limit
+                    if trade_pnl > 0:
+                        wins += 1
+                    else:
+                        losses += 1
+                    position_qty = 0.0
+                    cost_basis = 0.0
+                    avg_entry = 0.0
+                    candles_held = 0
 
-                elif pnl_pct <= -cfg.stop_loss_pct and action != "SELL":
-                    # Stop loss
-                    action = "SL_SELL"
-                    sell_qty = position.qty
-                    proceeds = sell_qty * last_price
-                    cost_of_sold = position.cost_basis
-                    trade_pnl = proceeds - cost_of_sold
-                    realized_pnl += trade_pnl
-                    daily_realized_pnl[dk] += trade_pnl
-                    balance += proceeds
-                    trade_side = "SELL"
-                    trade_reason = "STOP_LOSS"
-                    qty_traded = sell_qty
-                    usd_amount = proceeds
-                    position.qty = 0.0
-                    position.cost_basis = 0.0
-                    position.avg_entry = 0.0
+                # Take Profit / Stop Loss
+                if position_qty > 0.0001 and avg_entry > 0 and action != "SELL":
+                    pnl_pct = (price - avg_entry) / avg_entry
+                    if pnl_pct >= cfg.take_profit_pct:
+                        action = "TP_SELL"
+                        trade_pnl = (price - avg_entry) * position_qty
+                        proceeds = position_qty * price
+                        realized_pnl += trade_pnl
+                        daily_pnl += trade_pnl
+                        balance += proceeds
+                        trade_side = "SELL"
+                        trade_reason = "TAKE_PROFIT"
+                        qty_traded = position_qty
+                        usd_amount = proceeds
+                        wins += 1
+                        position_qty = 0.0
+                        cost_basis = 0.0
+                        avg_entry = 0.0
+                        candles_held = 0
+                    elif pnl_pct <= -cfg.stop_loss_pct:
+                        action = "SL_SELL"
+                        trade_pnl = (price - avg_entry) * position_qty
+                        proceeds = position_qty * price
+                        realized_pnl += trade_pnl
+                        daily_pnl += trade_pnl
+                        balance += proceeds
+                        trade_side = "SELL"
+                        trade_reason = "STOP_LOSS"
+                        qty_traded = position_qty
+                        usd_amount = proceeds
+                        losses += 1
+                        position_qty = 0.0
+                        cost_basis = 0.0
+                        avg_entry = 0.0
+                        candles_held = 0
 
-            if (trade_side == "SELL" or trade_side == "BUY") and qty_traded > 0:
-                # Log the trade
-                twr.writerow({"ts": c.ts.isoformat(), "symbol": c.instrument,
-                              "side": trade_side, "qty": round(qty_traded, 8),
-                              "price": round(last_price, 2),
-                              "usd_amount": round(usd_amount, 2),
-                              "realized_pnl": round(trade_pnl, 4),
-                              "reason": trade_reason})
-                # Also track in trades_log for counting
-                trades_log.append(TradeRecord(
-                    entry_ts=c.ts, exit_ts=c.ts if trade_side == "SELL" else None,
-                    symbol=c.instrument, side=trade_side,
-                    qty=qty_traded, price=last_price, usd_amount=usd_amount,
-                    realized_pnl=trade_pnl, reason=trade_reason
-                ))
+            # Log trade
+            if trade_side and qty_traded > 0:
+                tw.writerow({
+                    'ts': c['ts'],
+                    'symbol': cfg.symbol,
+                    'side': trade_side,
+                    'qty': round(qty_traded, 8),
+                    'price': round(price, 6),
+                    'usd_amount': round(usd_amount, 2),
+                    'realized_pnl': round(trade_pnl, 4),
+                    'reason': trade_reason,
+                })
 
-            # Track peak equity and drawdown
-            current_eq = equity()
-            peak_equity = max(peak_equity, current_eq)
-            dd = (peak_equity - current_eq) / peak_equity if peak_equity > 0 else 0
+            # Equity tracking
+            pos_value = position_qty * price
+            total_equity = balance + pos_value
+            peak_equity = max(peak_equity, total_equity)
+            dd = (peak_equity - total_equity) / peak_equity if peak_equity > 0 else 0
             max_dd = max(max_dd, dd)
 
-            # Write decision row
-            reason_code = reason if reason else (action + ("_EXECUTED" if qty_traded > 0 else ""))
-            if reason:
-                reason_counts[reason] += 1
-            else:
-                reason_counts[action + ("_EXECUTED" if qty_traded > 0 else "_NO_ACTION")] += 1
+            # Compute RSI/ATR for logging
+            rsi_val = compute_rsi(closes[:i + 1], cfg.rsi_period) if i >= warmup else 50
+            atr_val = compute_atr(highs[:i + 1], lows[:i + 1], closes[:i + 1], cfg.atr_period) if i >= warmup else 0
+            reason_code = reason or (action + ("_EXECUTED" if qty_traded > 0 else ""))
 
-            dwr.writerow({"timestamp_utc": c.ts.isoformat(), "instrument": c.instrument,
-                          "action": action, "reason_code": reason_code,
-                          "p_model_up": round(p_up, 6), "p_market_up": round(p_mkt, 6),
-                          "edge": round(edge, 6), "balance": round(balance, 2),
-                          "position_qty": round(position.qty, 6),
-                          "position_value": round(position_value(), 2),
-                          "total_equity": round(current_eq, 2), "price": round(last_price, 2)})
+            dw.writerow({
+                'timestamp_utc': c['ts'],
+                'instrument': cfg.symbol,
+                'action': action,
+                'reason_code': reason_code,
+                'rsi': round(rsi_val, 1),
+                'atr': round(atr_val, 6),
+                'balance': round(balance, 2),
+                'position_qty': round(position_qty, 6),
+                'position_value': round(pos_value, 2),
+                'total_equity': round(total_equity, 2),
+                'price': round(price, 6),
+            })
 
-            # Portfolio snapshot every 5 candles
-            if i % 5 == 0:
-                pwr.writerow({"ts": c.ts.isoformat(), "balance": round(balance, 2),
-                              "position_qty": round(position.qty, 6),
-                              "avg_entry": round(position.avg_entry, 6) if position.avg_entry else 0,
-                              "position_value": round(position_value(), 2),
-                              "unrealized_pnl": round(unrealized(), 4),
-                              "realized_pnl": round(realized_pnl, 4),
-                              "total_equity": round(current_eq, 2), "price": round(last_price, 2)})
-
-    # Final summary
-    final_eq = equity()
-    total_pnl = final_eq - cfg.initial_balance
-    total_buys = sum(1 for t in trades_log if t.side == "BUY")
-    total_sells = sum(1 for t in trades_log if t.side == "SELL")
-    winning_sells = sum(1 for t in trades_log if t.side == "SELL" and t.realized_pnl > 0)
-    losing_sells = sum(1 for t in trades_log if t.side == "SELL" and t.realized_pnl <= 0)
-    sell_win_rate = winning_sells / (winning_sells + losing_sells) if (winning_sells + losing_sells) > 0 else 0
+    # Final: close any remaining position at mark-to-market
+    final_price = candles[-1]['close']
+    pos_value = position_qty * final_price
+    unrealized = (final_price - avg_entry) * position_qty if avg_entry > 0 and position_qty > 0 else 0
+    total_equity = balance + pos_value
+    total_pnl = total_equity - cfg.initial_balance
 
     summary = {
-        "initial_balance": cfg.initial_balance,
-        "final_balance": round(balance, 2),
-        "final_position_qty": round(position.qty, 6),
-        "position_value": round(position_value(), 2),
-        "final_equity": round(final_eq, 2),
-        "total_pnl": round(total_pnl, 2),
-        "realized_pnl": round(realized_pnl, 2),
-        "unrealized_pnl": round(unrealized(), 2),
-        "total_buys": total_buys,
-        "total_sells": total_sells,
-        "winning_sells": winning_sells,
-        "losing_sells": losing_sells,
-        "sell_win_rate_percent": round(sell_win_rate * 100, 2),
-        "max_drawdown_percent": round(max_dd * 100, 2),
-        "config": asdict(cfg),
-        "outputs": {
-            "decisions_log": str(decisions_path),
-            "trades_log": str(trades_path),
-            "portfolio_snapshots": str(portfolio_path),
-            "summary_json": str(summary_path),
+        'initial_balance': cfg.initial_balance,
+        'final_balance': round(balance, 2),
+        'final_position_qty': round(position_qty, 6),
+        'position_value': round(pos_value, 2),
+        'total_equity': round(total_equity, 2),
+        'total_pnl': round(total_pnl, 2),
+        'realized_pnl': round(realized_pnl, 4),
+        'unrealized_pnl': round(unrealized, 4),
+        'total_trades': wins + losses,
+        'wins': wins,
+        'losses': losses,
+        'win_rate_pct': round(wins / max(1, wins + losses) * 100, 1),
+        'max_drawdown_pct': round(max_dd * 100, 2),
+        'config': {k: v for k, v in asdict(cfg).items()},
+        'outputs': {
+            'decisions_log': str(dlog),
+            'trades_log': str(tlog),
+            'summary_json': str(sump),
         },
     }
-
-    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    sump.write_text(json.dumps(summary, indent=2))
     return summary
 
 
-def main() -> None:
-    p = argparse.ArgumentParser(description="PolyPortfolioPaper — Portfolio-based Polymarket paper bot")
-    p.add_argument("--input", required=True, help="CSV input path")
-    p.add_argument("--config", default=None, help="Optional JSON config")
-    p.add_argument("--output-dir", default="portfolio_runs/latest", help="Output directory")
+def main():
+    p = argparse.ArgumentParser(description="PolyPortfolioPaper v2 — RSI-based portfolio bot")
+    p.add_argument('--input', required=True)
+    p.add_argument('--config')
+    p.add_argument('--output-dir', default='portfolio_runs/latest')
     args = p.parse_args()
 
-    input_path = Path(args.input)
-    out_dir = Path(args.output_dir)
-    cfg_path = Path(args.config) if args.config else None
+    cfg = PortfolioConfig()
+    if args.config:
+        cfg_path = Path(args.config)
+        if cfg_path.exists():
+            d = json.loads(cfg_path.read_text())
+            for k, v in d.items():
+                if hasattr(cfg, k):
+                    setattr(cfg, k, v)
 
-    cfg = load_config(cfg_path)
-    candles = load_candles(input_path)
+    candles = load_candles(Path(args.input))
     if len(candles) < 50:
-        raise ValueError("Need at least 50 rows.")
+        raise ValueError(f'Need at least 50 candles, got {len(candles)}')
 
-    summary = run_portfolio_sim(candles, cfg, out_dir)
+    summary = run_simulation(candles, cfg, Path(args.output_dir))
+    print(f'PolyPortfolioPaper v2 — {cfg.symbol} (RSI-based)')
+    print(f'  Period: {candles[0]["ts"]} → {candles[-1]["ts"]}')
+    print(f'  Result: ${summary["initial_balance"]:.2f} → ${summary["total_equity"]:.2f}')
+    print(f'  PnL: ${summary["total_pnl"]:.2f} (realized: ${summary["realized_pnl"]:.4f})')
+    print(f'  Trades: {summary["total_trades"]} ({summary["wins"]}W/{summary["losses"]}L) WR: {summary["win_rate_pct"]}%')
     print(json.dumps(summary, indent=2))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

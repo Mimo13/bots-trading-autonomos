@@ -34,23 +34,7 @@ def ensure_schema(conn):
     conn.execute((ROOT / 'sql/schema.sql').read_text())
 
 
-def _orchestrator_paused_bots() -> set:
-    """Read list of bots currently paused by the orchestrator."""
-    paused_file = ROOT / 'runtime/orchestrator/paused_bots.json'
-    try:
-        if paused_file.exists():
-            data = json.loads(paused_file.read_text())
-            return set(data.get('paused', []))
-    except Exception:
-        pass
-    return set()
-
-
 def upsert_status(conn, bot, **vals):
-    is_running = vals.get('is_running', False)
-    # Respect orchestrator pause — never re-enable a paused bot
-    if is_running and bot in _orchestrator_paused_bots():
-        is_running = False
     conn.execute('''
     insert into bot_status(bot_name,is_running,mode,balance_usd,pnl_day_usd,pnl_week_usd,tokens_value_usd,updated_at)
     values(%(bot)s,%(is_running)s,'paper',%(balance)s,%(pnl_day)s,%(pnl_week)s,%(tokens)s,now())
@@ -58,7 +42,7 @@ def upsert_status(conn, bot, **vals):
       is_running=excluded.is_running, mode=excluded.mode, balance_usd=excluded.balance_usd,
       pnl_day_usd=excluded.pnl_day_usd,pnl_week_usd=excluded.pnl_week_usd,tokens_value_usd=excluded.tokens_value_usd,
       updated_at=now()
-    ''', {'bot': bot, 'is_running': is_running,
+    ''', {'bot': bot, 'is_running': vals.get('is_running', False),
           'balance': vals.get('balance', 0), 'pnl_day': vals.get('pnl_day', 0),
           'pnl_week': vals.get('pnl_week', 0), 'tokens': vals.get('tokens', 0)})
 
@@ -706,8 +690,10 @@ def load_latest_grid_bot(conn, bot_name: str, prefix: str, token: str):
         if summary.exists():
             try:
                 d = json.loads(summary.read_text())
+                total_equity = float(d.get('total_equity', INITIAL_BALANCE))
                 tokens_value = float(d.get('xrp_value_usd', 0) or 0)
                 token_qty = float(d.get('xrp_hold', 0) or 0)
+                balance = round(total_equity - tokens_value, 2)
             except Exception:
                 pass
     if token_qty > 0 and tokens_value > 0:
@@ -720,10 +706,6 @@ def load_latest_grid_bot(conn, bot_name: str, prefix: str, token: str):
         values(%s,%s,'BUY',%s,%s,%s,0,now())
         on conflict(bot_name,symbol,side) do update set qty=excluded.qty, entry_price=excluded.entry_price, mark_price=excluded.mark_price, updated_at=now()""",
                      [bot_name, token, round(token_qty, 8), round(mark, 6), round(mark, 6)])
-    # Compute balance from DB PnL (not summary, which resets each run)
-    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name=%s", [bot_name])
-    total_pnl = float(r.fetchone()[0])
-    balance = round(INITIAL_BALANCE + total_pnl - tokens_value, 2)
     pnl_day, pnl_week = _pnl_day_week(conn, bot_name)
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
     upsert_status(conn, bot_name, is_running=running, balance=balance,
@@ -765,6 +747,7 @@ def load_generic_run_bot(conn, bot_name: str, prefix: str):
                                 [bot_name, entry_side, ts]
                             )
 
+    balance = INITIAL_BALANCE
     tokens_value = 0.0
     latest_mtime = 0
     if runs.exists():
@@ -775,104 +758,28 @@ def load_generic_run_bot(conn, bot_name: str, prefix: str):
                     latest_mtime = s.stat().st_mtime
                     try:
                         d = json.loads(s.read_text())
+                        raw_balance = float(d.get('final_balance', d.get('final_equity', d.get('total_equity', INITIAL_BALANCE))))
                         tokens_value = float(d.get('xrp_value_usd', d.get('tokens_value', d.get('position_value', 0))) or 0)
+                        balance = round(raw_balance - tokens_value, 2)  # cash only
                     except Exception:
                         pass
-    # Compute balance from DB PnL (not summary, which resets each run)
-    r = conn.execute("select coalesce(sum(pnl_usd),0) from trades where bot_name=%s", [bot_name])
-    total_pnl = float(r.fetchone()[0])
-    balance = round(INITIAL_BALANCE + total_pnl - tokens_value, 2)
-    pnl_day, pnl_week = _pnl_day_week(conn, bot_name)
     running = (ROOT / 'runtime/polymarket/last_runner_status.json').exists()
-    upsert_status(conn, bot_name, is_running=running, balance=balance, pnl_day=round(pnl_day, 6), pnl_week=round(pnl_week, 6), tokens=round(tokens_value, 2))
+    upsert_status(conn, bot_name, is_running=running, balance=balance, pnl_day=0, pnl_week=0, tokens=round(tokens_value, 2))
 
 
 def main():
-    # Retry logic for DB recovery after power outage / crash
-    import time
-    max_retries = 10
-    retry_delay = 3
-    last_err = None
-    for attempt in range(1, max_retries + 1):
-        try:
-            with psycopg.connect(DB_URL, autocommit=True) as conn:
-                ensure_schema(conn)
-                load_poly(conn)
-                load_sol_pb(conn)
-                # load_pfolio(conn) — ARCHIVADO 2026-05-14: RSI SOL sin edge; ver MEMORY.md
-                # load_fabian_py(conn) — ARCHIVADO 2026-05-11: shorts irrealistas, usar fabian_spot_long
-                load_fabian_spot_long(conn)
-                # load_fabianpro(conn) — ARCHIVADO 2026-05-11: shorts + rendimiento mediocre
-                load_generic_run_bot(conn, 'xrp_grid', 'xrp_grid')
-                load_latest_spot_long_bot(conn, 'bnb_spot_long', 'bnb_spot_long', 'BNBUSDC')
-                load_latest_grid_bot(conn, 'bnb_grid', 'bnb_grid', 'BNB')
-                load_generic_run_bot(conn, 'tv_sol', 'tv_')
-                load_portfolio_paper(conn)
-            return  # Success
-        except psycopg.OperationalError as e:
-            last_err = e
-            if attempt < max_retries:
-                print(f"DB connection failed (attempt {attempt}/{max_retries}): {e}")
-                time.sleep(retry_delay)
-            else:
-                print(f"DB connection failed after {max_retries} attempts: {e}")
-                raise
-
-
-def load_portfolio_paper(conn):
-    """Portfolio Mirror Bot — lee de runtime/portfolio/runs/portfolio_mirror_*"""
-    runs = ROOT / 'runtime/portfolio/runs'
-    if not runs.exists():
-        return
-    # Buscar el run más reciente
-    latest = None
-    latest_mtime = 0
-    for entry in sorted(runs.iterdir()):
-        if entry.name.startswith('portfolio_mirror_'):
-            summary = entry / 'summary.json'
-            if summary.exists() and summary.stat().st_mtime > latest_mtime:
-                latest = entry
-                latest_mtime = summary.stat().st_mtime
-    if latest is None:
-        return
-    bot_name = 'portfolio_mirror'
-    # Cargar trades
-    tl = latest / 'trades_log.csv'
-    if tl.exists():
-        with tl.open() as f:
-            for x in csv.DictReader(f):
-                ts_str = x.get('ts', '')
-                try:
-                    ts = parse_ts(ts_str)
-                except Exception:
-                    continue
-                pnl = float(x.get('pnl', 0) or 0)
-                side = (x.get('side') or '').upper()
-                qty = float(x.get('qty', 0) or 0)
-                usd = float(x.get('usd_amount', 0) or abs(pnl) or 0)
-                symbol = x.get('symbol', '?')
-                raw = x
-                if side == 'BUY':
-                    result = ''
-                elif side == 'SELL':
-                    result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
-                else:
-                    result = 'WIN' if pnl > 0 else 'LOSS' if pnl < 0 else 'FLAT'
-                conn.execute('''insert into trades(bot_name,ts,side,token_qty,usd_amount,pnl_usd,result,raw)
-                values(%s,%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict do nothing''',
-                             [bot_name, ts, side, qty, usd, pnl, result, json.dumps(raw)])
-    # Balance desde summary
-    balance = 206.82  # default desde snapshot
-    try:
-        d = json.loads((latest / 'summary.json').read_text())
-        balance = float(d.get('final_balance', d.get('final_equity', 206.82)))
-    except Exception:
-        pass
-    # Calcular PnL day/week desde trades reales
-    pnl_day, pnl_week = _pnl_day_week(conn, bot_name)
-    running = True  # el bot corre con el runner
-    upsert_status(conn, bot_name, is_running=running, balance=round(balance, 2),
-                  pnl_day=round(pnl_day, 6), pnl_week=round(pnl_week, 6), tokens=0)
+    with psycopg.connect(DB_URL, autocommit=True) as conn:
+        ensure_schema(conn)
+        load_poly(conn)
+        load_sol_pb(conn)
+        load_pfolio(conn)  # reactivado 2026-05-10: RSI-based
+        # load_fabian_py(conn) — ARCHIVADO 2026-05-11: shorts irrealistas, usar fabian_spot_long
+        load_fabian_spot_long(conn)
+        # load_fabianpro(conn) — ARCHIVADO 2026-05-11: shorts + rendimiento mediocre
+        load_generic_run_bot(conn, 'xrp_grid', 'xrp_grid')
+        load_latest_spot_long_bot(conn, 'bnb_spot_long', 'bnb_spot_long', 'BNBUSDC')
+        load_latest_grid_bot(conn, 'bnb_grid', 'bnb_grid', 'BNB')
+        load_generic_run_bot(conn, 'tv_sol', 'tv_')
 
 
 if __name__ == '__main__':
